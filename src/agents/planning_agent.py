@@ -73,6 +73,7 @@ class PlanningAgent(BaseAgent):
                 PlanStep(
                     description="Fallback: Provide a direct response based on available knowledge",
                     requires_tool=False,
+                    is_required=True
                 )
             ])
 
@@ -222,7 +223,8 @@ class PlanningAgent(BaseAgent):
                             new_step = PlanStep(
                                 description=mod["new_description"],
                                 requires_tool=mod.get("requires_tool", False),
-                                tool_name=mod.get("tool_name")
+                                tool_name=mod.get("tool_name"),
+                                is_required=mod.get("is_required", True)
                             )
                             plan.add_step(new_step)
                             plan_modified = True
@@ -239,7 +241,8 @@ class PlanningAgent(BaseAgent):
                                 plan.steps[step_index] = PlanStep(
                                     description=mod["new_description"],
                                     requires_tool=mod.get("requires_tool", False),
-                                    tool_name=mod.get("tool_name")
+                                    tool_name=mod.get("tool_name"),
+                                    is_required=mod.get("is_required", True)
                                 )
                                 plan_modified = True
                                 

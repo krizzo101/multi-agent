@@ -15,16 +15,17 @@ class ChatHistory:
         return self.messages
     
 class PlanStep:
-    def __init__(self, description: str, requires_tool: bool = False, tool_name: str = None):
+    def __init__(self, description: str, requires_tool: bool = False, tool_name: str = None, is_required: bool = True):
         self.description = description
         self.requires_tool = requires_tool
         self.tool_name = tool_name
+        self.is_required = is_required
         self.completed = False
         self.result = None
 
 class ExecutionPlan:
-    def __init__(self):
-        self.steps: List[PlanStep] = []
+    def __init__(self, steps: List[PlanStep] = None):
+        self.steps = steps if steps is not None else []
         self.current_step = 0
         
     def add_step(self, step: PlanStep):

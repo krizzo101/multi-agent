@@ -4,7 +4,7 @@ from typing import AsyncGenerator, Generator, List, Optional
 from llama_index.llms.anthropic import Anthropic
 from llama_index.core.llms import ChatMessage
 from .base import BaseLLM
-from src.config import Config
+from src.settings import global_settings
 import logging
 from llama_index.core import Settings
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class ClaudeLLM(BaseLLM):
     def __init__(self):
-        config = Config.CLAUDE_CONFIG
+        config = global_settings.CLAUDE_CONFIG
         super().__init__(
             api_key=config.api_key,
             model_name=config.model_name,
@@ -28,17 +28,16 @@ class ClaudeLLM(BaseLLM):
             tokenizer = Anthropic().tokenizer
             Settings.tokenizer = tokenizer
             
-            config = Config()
             model_config = {
                 'api_key': self.api_key,
                 'model': self.model_id,
                 'temperature': self.temperature,
                 'max_tokens': self.max_tokens,
-                'top_p': config.CLAUDE_CONFIG.top_p,
+                'top_p': global_settings.CLAUDE_CONFIG.top_p,
             }
             
             # Add endpoint config if available
-            endpoint_cfg = config.CLAUDE_CONFIG.endpoint_config
+            endpoint_cfg = global_settings.CLAUDE_CONFIG.endpoint_config
             if endpoint_cfg.api_base:
                 model_config['api_base'] = endpoint_cfg.api_base
             if endpoint_cfg.api_version:

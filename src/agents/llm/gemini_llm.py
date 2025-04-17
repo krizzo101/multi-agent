@@ -3,7 +3,7 @@ from typing import AsyncGenerator, Generator, List, Optional
 from llama_index.llms.gemini import Gemini
 from llama_index.core.llms import ChatMessage
 from .base import BaseLLM
-from src.config import Config
+from src.settings import global_settings
 import logging
 import asyncio
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class GeminiLLM(BaseLLM):
     def __init__(self):
-        config = Config.GEMINI_CONFIG
+        config = global_settings.GEMINI_CONFIG
         super().__init__(
             api_key=config.api_key,
             model_name=config.model_name,
@@ -24,7 +24,6 @@ class GeminiLLM(BaseLLM):
 
     def _initialize_model(self) -> None:
         try:
-            config = Config()
             self.model = Gemini(
                 api_key=self.api_key,
                 model=self.model_id,
@@ -33,12 +32,12 @@ class GeminiLLM(BaseLLM):
                 additional_kwargs={
                     'generation_config': {
                         'temperature': self.temperature,
-                        'top_p': config.GEMINI_CONFIG.top_p,
-                        'top_k': config.GEMINI_CONFIG.top_k,
+                        'top_p': global_settings.GEMINI_CONFIG.top_p,
+                        'top_k': global_settings.GEMINI_CONFIG.top_k,
                     }
                 },
-                api_base=config.GEMINI_CONFIG.endpoint_config.api_base if config.GEMINI_CONFIG.endpoint_config.api_base else None,
-                api_version=config.GEMINI_CONFIG.endpoint_config.api_version if config.GEMINI_CONFIG.endpoint_config.api_version else None
+                api_base=global_settings.GEMINI_CONFIG.endpoint_config.api_base if global_settings.GEMINI_CONFIG.endpoint_config.api_base else None,
+                api_version=global_settings.GEMINI_CONFIG.endpoint_config.api_version if global_settings.GEMINI_CONFIG.endpoint_config.api_version else None
             )
         except Exception as e:
             logger.error(f"Failed to initialize Gemini model: {str(e)}")

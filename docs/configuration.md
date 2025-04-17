@@ -263,4 +263,74 @@ MAX_TOKENS=1024  # Smaller responses for faster tests
 3. **Unexpected agent behavior**:
    - Review system prompt customizations
    - Check temperature and other generation parameters
-   - Look at logs for any error messages 
+   - Look at logs for any error messages
+
+# Configuration Standard
+
+This document outlines the configuration system used in the multi-agent application.
+
+## Configuration Files
+
+The application uses the following configuration-related files:
+
+- `src/config.py`: Main configuration module with settings classes
+- `src/settings.py`: Exports the global configuration instance
+
+## Global Configuration Instance
+
+The application uses a single global configuration instance to ensure consistency 
+throughout the codebase. This instance is created in `src/settings.py` and can be 
+imported using:
+
+```python
+from src.settings import global_settings
+```
+
+## Configuration Classes
+
+All configuration settings are defined in `src/config.py` and grouped into relevant 
+configuration classes.
+
+### LLM Configuration
+
+Configuration for specific Large Language Models:
+
+```python
+# Example: Using the global configuration instance
+from src.settings import global_settings
+
+# Access OpenAI configuration settings
+openai_settings = global_settings.OPENAI_CONFIG
+
+# Initialize model with settings
+model = OpenAI(
+    api_key=openai_settings.api_key,
+    model=openai_settings.model_id,
+    temperature=openai_settings.temperature,
+    max_tokens=openai_settings.max_tokens
+)
+```
+
+### Environment Variables
+
+All configuration settings can be overridden by environment variables, which are 
+loaded automatically by the Config class.
+
+For example:
+- `OPENAI_API_KEY` - Sets the API key for OpenAI
+- `GOOGLE_API_KEY` - Sets the API key for Google/Gemini
+- `ANTHROPIC_API_KEY` - Sets the API key for Anthropic/Claude
+
+## Configuration Best Practices
+
+1. Always import and use the global configuration instance:
+   ```python
+   from src.settings import global_settings
+   ```
+
+2. Do not create new Config() instances in your code. Instead, use the global instance.
+
+3. For unit tests, you can create test-specific configuration instances, but in application
+   code always use the global instance.
+
+4. If adding new configuration settings, add them to the appropriate class in `src/config.py`. 

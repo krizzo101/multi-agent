@@ -4,14 +4,14 @@ from typing import AsyncGenerator, Generator, List, Optional
 from llama_index.llms.openai import OpenAI
 from llama_index.core.llms import ChatMessage
 from .base import BaseLLM
-from src.config import Config
+from src.settings import global_settings
 import logging
 
 logger = logging.getLogger(__name__)
 
 class OpenAILLM(BaseLLM):
     def __init__(self):
-        config = Config.OPENAI_CONFIG
+        config = global_settings.OPENAI_CONFIG
         super().__init__(
             api_key=config.api_key,
             model_name=config.model_name,
@@ -24,19 +24,18 @@ class OpenAILLM(BaseLLM):
 
     def _initialize_model(self) -> None:
         try:
-            config = Config()
             openai_config = {
                 'api_key': self.api_key,
                 'model': self.model_id,
                 'temperature': self.temperature,
                 'max_tokens': self.max_tokens,
-                'top_p': config.OPENAI_CONFIG.top_p,
-                'frequency_penalty': config.OPENAI_CONFIG.frequency_penalty,
-                'presence_penalty': config.OPENAI_CONFIG.presence_penalty,
+                'top_p': global_settings.OPENAI_CONFIG.top_p,
+                'frequency_penalty': global_settings.OPENAI_CONFIG.frequency_penalty,
+                'presence_penalty': global_settings.OPENAI_CONFIG.presence_penalty,
             }
             
             # Add optional endpoint configuration if provided
-            endpoint_cfg = config.OPENAI_CONFIG.endpoint_config
+            endpoint_cfg = global_settings.OPENAI_CONFIG.endpoint_config
             if endpoint_cfg.api_base:
                 openai_config['api_base'] = endpoint_cfg.api_base
             if endpoint_cfg.organization_id:

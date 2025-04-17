@@ -5,7 +5,7 @@ from llama_index.core.llms import ChatMessage
 from llama_index.llms.anthropic import Anthropic
 from llama_index.llms.gemini import Gemini
 from llama_index.llms.openai import OpenAI
-from src.config import Config
+from src.settings import global_settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class BaseLLM(ABC):
         self.max_tokens = max_tokens
         self.system_prompt = system_prompt
 
-    def _get_openai_config(self, global_settings):
+    def _get_openai_config(self):
         """Helper method to create OpenAI configuration"""
         config = {
             'api_key': self.api_key if self.api_key else global_settings.OPENAI_CONFIG.api_key,
@@ -65,15 +65,14 @@ class BaseLLM(ABC):
 
     def _initialize_model(self) -> None:
         try:
-            global_settings = Config()
-            
             # Handle OpenAI models - both standard and small models
-            if self.model_name.lower() in Config.OPENAI_MODEL_TYPES or self.model_name in Config.OPENAI_SMALL_MODELS:
-                config = self._get_openai_config(global_settings)
+            if (self.model_name.lower() in global_settings.OPENAI_MODEL_TYPES or 
+                self.model_name in global_settings.OPENAI_SMALL_MODELS):
+                config = self._get_openai_config()
                 self.model = OpenAI(**config)
             
             # Handle Gemini models
-            elif self.model_name.lower() in Config.GEMINI_MODEL_TYPES:
+            elif self.model_name.lower() in global_settings.GEMINI_MODEL_TYPES:
                 self.model = Gemini(
                     api_key=self.api_key if self.api_key else global_settings.GEMINI_CONFIG.api_key,
                     model=self.model_id if self.model_id else global_settings.GEMINI_CONFIG.model_id,
@@ -91,7 +90,7 @@ class BaseLLM(ABC):
                 )
             
             # Handle Claude/Anthropic models
-            elif self.model_name.lower() in Config.CLAUDE_MODEL_TYPES:
+            elif self.model_name.lower() in global_settings.CLAUDE_MODEL_TYPES:
                 self.model = Anthropic(
                     api_key=self.api_key if self.api_key else global_settings.CLAUDE_CONFIG.api_key,
                     model=self.model_id if self.model_id else global_settings.CLAUDE_CONFIG.model_id,
