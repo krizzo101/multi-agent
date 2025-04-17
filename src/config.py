@@ -65,6 +65,11 @@ class Config:
     # Default LLM Selection
     DEFAULT_LLM = "openai"
     
+    # Model type identifiers
+    OPENAI_MODEL_TYPES = ["openai", "gpt", "azure"]  # Identifiers used to recognize OpenAI models
+    GEMINI_MODEL_TYPES = ["gemini", "google"]        # Identifiers used to recognize Gemini models
+    CLAUDE_MODEL_TYPES = ["claude", "anthropic"]     # Identifiers used to recognize Claude models
+    
     # OpenAI Defaults
     OPENAI_API_KEY = ""
     OPENAI_MODEL_NAME = "GPT"
@@ -78,6 +83,9 @@ class Config:
     OPENAI_API_BASE = ""
     OPENAI_ORGANIZATION_ID = ""
     OPENAI_API_VERSION = ""
+    
+    # Model lists for validation and special handling
+    OPENAI_SMALL_MODELS = ["gpt-4.1-nano-2025-04-14", "gpt-4.1-nano", "gpt-4.1-mini-2025-04-14", "gpt-4.1-mini", "o3-mini-2025-01-31", "o3-mini"]
     
     # Gemini Defaults
     GOOGLE_API_KEY = ""
