@@ -64,45 +64,50 @@ Other configuration classes include:
 
 ## Configuration Loading
 
-Settings are loaded from environment variables with fallbacks to defaults:
+The system uses a multi-layer fallback approach for configuration:
+
+1. **Environment Variables**: First priority is given to settings in the `.env` file
+2. **Class-level Defaults**: If environment variables aren't found, the system falls back to defaults defined in the `Config` class
+3. **Pydantic Model Defaults**: As a final fallback, defaults defined in Pydantic models are used
+
+This example demonstrates the fallback hierarchy:
 
 ```python
+# Class-level default defined in Config class
+OPENAI_MODEL_ID = "gpt-3.5-turbo"
+
+# Configuration loading with fallbacks
 OPENAI_CONFIG = LLMConfig(
-    api_key=os.environ.get('OPENAI_API_KEY', ''),
-    model_name="GPT",
-    model_id=os.environ.get('OPENAI_MODEL_ID', 'gpt-3.5-turbo'),
-    temperature=float(os.environ.get('OPENAI_TEMPERATURE', '0.7')),
-    max_tokens=int(os.environ.get('OPENAI_MAX_TOKENS', '2048')),
-    system_prompt=LLM_SYSTEM_PROMPT,
-    top_p=float(os.environ.get('OPENAI_TOP_P', '1.0')),
-    top_k=int(os.environ.get('OPENAI_TOP_K', '40')),
-    frequency_penalty=float(os.environ.get('OPENAI_FREQUENCY_PENALTY', '0.0')),
-    presence_penalty=float(os.environ.get('OPENAI_PRESENCE_PENALTY', '0.0')),
-    endpoint_config=LLMEndpointConfig(
-        api_base=os.environ.get('OPENAI_API_BASE', ''),
-        organization_id=os.environ.get('OPENAI_ORGANIZATION_ID', ''),
-        api_version=os.environ.get('OPENAI_API_VERSION', '')
-    )
+    # First tries environment variable, then falls back to class default
+    model_id=os.environ.get('OPENAI_MODEL_ID', OPENAI_MODEL_ID),
+    # If both are missing, falls back to Pydantic model default
+    temperature=float(os.environ.get('OPENAI_TEMPERATURE', OPENAI_TEMPERATURE)),
+    # ... other settings
 )
 ```
 
+This multi-layer approach ensures that:
+- The system always has sensible defaults even if no environment variables are set
+- Critical values like API keys default to empty strings if not provided
+- Settings are consistently available throughout the application
+
 ## Prompt Management
 
-All system prompts are centralized in `src/prompt.py` and are also configurable via environment variables:
+All system prompts are centralized in `src/prompt.py` using the same multi-layer fallback approach:
 
 ```python
-# Classification Prompts
-CLASSIFY_PROMPT = os.environ.get('CLASSIFY_PROMPT', """
-You are AgentMatcher, an intelligent assistant designed to analyze user queries and match them with 
-the most suitable agent or department. Your task is to understand the user request,
-identify key entities and intents, and determine which agent or department would be best equipped
-to handle the query.
+class PromptDefaults:
+    """Default values for all system prompts in the application."""
+    
+    # Default System Prompts
+    LLM_SYSTEM_PROMPT = """
+    You are a helpful AI assistant designed to provide clear, concise, and friendly responses...
+    """
+    # ... other prompt defaults
 
-# ... prompt content ...
-""")
+# Exported variables use environment variables with fallbacks to class defaults
+LLM_SYSTEM_PROMPT = os.environ.get('LLM_SYSTEM_PROMPT', PromptDefaults.LLM_SYSTEM_PROMPT)
 ```
-
-This makes it easy to modify agent behavior without changing code.
 
 ## Customizing the Configuration
 
