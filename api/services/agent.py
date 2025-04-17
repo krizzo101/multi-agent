@@ -11,18 +11,22 @@ from src.agents import (
 from src.tools.tool_manager import weather_tool
 from src.agents.llm import GeminiLLM
 from llama_index.core.llms import ChatMessage
+from src.settings import global_settings
+
+# Get a logger for this module
+logger = logging.getLogger(__name__)
 
 class AgentChat:
     def __init__(self):
         # Initialize LLM
         self.llm = GeminiLLM()
         
-        # Logging setup
-        logging.basicConfig(level=logging.INFO)
-        self.logger = logging.getLogger(__name__)
+        # Verbose flag from configuration 
+        self.verbose = global_settings.agent.verbose_logging
+        
+        logger.info("Initializing AgentChat with agents")
         
         # Create a default agent for fallback
-        # In AgentChat __init__
         self.default_agent = FallbackAgent(
             self.llm,
             AgentOptions(
@@ -38,7 +42,7 @@ class AgentChat:
             AgentOptions(
                 id="reflection",
                 name="Reflection Assistant",
-                description="Helps with information generation and refinement about football"
+                description="Helps with information generation and refinement about topics"
             )
         )
         
@@ -69,18 +73,25 @@ class AgentChat:
         
         # Chat history to provide context
         self.chat_history: List[ChatMessage] = []
+        
+        logger.info("AgentChat initialization complete")
     
-    async def get_response(self, user_input: str, verbose: bool = True) -> str:
+    async def get_response(self, user_input: str, verbose: bool = None) -> str:
         """
         Process user input by routing to appropriate agent
         
         Args:
             user_input (str): User's query
-            verbose (bool): Whether to log detailed information
+            verbose (bool): Whether to log detailed information (overrides default)
         
         Returns:
             str: Agent's response
         """
+        # Use specified verbose flag or default from config
+        verbose = self.verbose if verbose is None else verbose
+        
+        logger.info(f"Processing user input: {user_input[:50]}...")
+        
         try:
             # Process the input and get a response
             response = await self.manager.run(
@@ -93,15 +104,17 @@ class AgentChat:
             self.chat_history.append(ChatMessage(role="user", content=user_input))
             self.chat_history.append(ChatMessage(role="assistant", content=response))
             
-            # Trim chat history to last 5 messages to prevent context overflow
+            # Trim chat history to last 10 messages to prevent context overflow
             self.chat_history = self.chat_history[-10:]
             
+            logger.info("Response generated successfully")
             return response
         
         except Exception as e:
-            self.logger.error(f"Error in get_response: {e}")
+            logger.error(f"Error in get_response: {str(e)}", exc_info=True)
             return "I'm sorry, I encountered an error processing your request."
     
     def reset_chat(self):
         """Reset the chat history"""
+        logger.info("Resetting chat history")
         self.chat_history = []

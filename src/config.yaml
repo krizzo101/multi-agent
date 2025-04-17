@@ -1,0 +1,49 @@
+# Multi-Agent Configuration
+
+# LLM Configuration
+llm:
+  api_key: ""  # Set via environment variable
+  model_name: "Gemini"
+  model_id: "models/gemini-1.5-flash"
+  temperature: 0.7
+  max_tokens: 2048
+  system_prompt: "You are a helpful assistant."
+  top_p: 0.8
+  top_k: 40
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  stop_sequences: []
+  endpoint_config:
+    api_base: ""
+    organization_id: ""
+    api_version: ""
+    deployment_id: ""
+    timeout: 60
+
+# Agent Configuration  
+agent:
+  save_chat: true
+  verbose_logging: true
+  max_retries: 3
+  timeout_seconds: 60
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  debug: true
+  reload: true
+
+# UI Configuration
+ui:
+  port: 8501
+  address: "0.0.0.0"
+  theme: "light"
+
+# Logging Configuration
+logging:
+  level: "DEBUG"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file_path: "global.log"
+  file_enabled: true
+  console_enabled: true 

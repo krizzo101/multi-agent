@@ -166,11 +166,17 @@ class TemplateManager:
         
         # Render template with variables
         try:
-            return chevron.render(
-                template_content,
-                variables,
-                partials=self.cache.partials
-            ).strip()
+            # Check if chevron is available, otherwise fallback to string format
+            try:
+                import chevron
+                return chevron.render(
+                    template=template_content,
+                    data=variables,
+                    partials_dict=self.cache.partials
+                ).strip()
+            except (ImportError, AttributeError):
+                # Fallback to basic string format
+                return template_content.format(**variables).strip()
         except Exception as e:
             logger.error(f"Error rendering template {template_id}: {str(e)}")
             return template_content  # Return unrendered as fallback

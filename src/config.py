@@ -98,10 +98,53 @@ class UIConfig(BaseModel):
 
 # Logging Configuration
 class LoggingConfig(BaseModel):
-    level: str = Field(default="INFO")
-    format: str = Field(default="%(asctime)s | %(levelname)-8s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s")
-    log_to_file: bool = Field(default=True)
-    log_dir: str = Field(default="logs")
+    """Configuration for logging"""
+    level: str = "INFO"
+    format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    file_path: str = "global.log"
+    file_enabled: bool = True
+    console_enabled: bool = True
+    
+    def setup_logging(self):
+        """Configure the logging system based on current settings"""
+        import logging
+        
+        # Create formatter
+        formatter = logging.Formatter(self.format)
+        
+        # Convert level string to actual level
+        level = getattr(logging, self.level.upper(), logging.INFO)
+        
+        # Configure root logger
+        root_logger = logging.getLogger()
+        root_logger.setLevel(level)
+        
+        # Remove any existing handlers to avoid duplicates
+        for handler in root_logger.handlers[:]:
+            root_logger.removeHandler(handler)
+        
+        # Add console handler if enabled
+        if self.console_enabled:
+            console = logging.StreamHandler()
+            console.setLevel(level)
+            console.setFormatter(formatter)
+            root_logger.addHandler(console)
+        
+        # Add file handler if enabled
+        if self.file_enabled and self.file_path:
+            try:
+                file_handler = logging.FileHandler(self.file_path, mode='a')
+                file_handler.setLevel(level)
+                file_handler.setFormatter(formatter)
+                root_logger.addHandler(file_handler)
+                
+                # Log a startup message to verify logging is working
+                root_logger.info("Logging system initialized")
+            except Exception as e:
+                # Log to console if file logging fails
+                root_logger.error(f"Failed to setup file logging: {str(e)}")
+        
+        return root_logger
 
 # --- YAML + ENV CONFIG LOADING ---
 def load_config_yaml_env(yaml_path: str = "config.yaml") -> Dict[str, Any]:
@@ -258,8 +301,8 @@ class LegacyAdapter:
         # Logging configurations
         self.LOG_LEVEL = self._config.logging.level
         self.LOG_FORMAT = self._config.logging.format
-        self.LOG_TO_FILE = self._config.logging.log_to_file
-        self.LOG_DIR = self._config.logging.log_dir
+        self.LOG_TO_FILE = self._config.logging.file_enabled
+        self.LOG_DIR = self._config.logging.file_path
 
 # Model type identifiers
 OPENAI_MODEL_TYPES = ["openai", "gpt", "azure"]  # Identifiers used to recognize OpenAI models

@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 import time
 
-# Create a single global instance of the Config class to be shared across the application
+# Load global configuration
 global_settings = Config()
 
 # Set up logging
@@ -19,22 +19,18 @@ def setup_logging():
         format=log_format
     )
     
-    # Add file handler if log_to_file is enabled
-    if global_settings.logging.log_to_file:
-        # Create log directory if it doesn't exist
-        log_dir = global_settings.logging.log_dir
-        os.makedirs(log_dir, exist_ok=True)
+    # Add file handler if file_enabled is enabled
+    if global_settings.logging.file_enabled:
+        # Get file path
+        log_file = global_settings.logging.file_path
         
-        # Create date-based directory
-        today = datetime.now().strftime("%Y-%m-%d")
-        date_log_dir = os.path.join(log_dir, today)
-        os.makedirs(date_log_dir, exist_ok=True)
-        
-        # Create global log file
-        log_file = os.path.join(log_dir, "global.log")
+        # Create directory if it doesn't exist
+        log_dir = os.path.dirname(log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
         
         # Add file handler
-        file_handler = logging.FileHandler(log_file)
+        file_handler = logging.FileHandler(log_file, mode='a')
         file_handler.setLevel(log_level)
         file_handler.setFormatter(logging.Formatter(log_format))
         
@@ -44,8 +40,5 @@ def setup_logging():
         # Log initialization message
         logging.info(f"Logging initialized with level {global_settings.logging.level}")
 
-# Initialize logging when this module is imported
-setup_logging()
-
 # Export the global_settings instance for importing elsewhere
-__all__ = ['global_settings'] 
+__all__ = ['global_settings', 'setup_logging'] 
