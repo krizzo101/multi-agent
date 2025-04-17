@@ -1,0 +1,14 @@
+error_handling: |
+  If an error occurs during processing, respond with:
+  
+  **Error Type**: {error_type}
+  **Error Message**: {error_message}
+  **Possible Solutions**:
+  - {solution_1}
+  - {solution_2}
+  - {solution_3}
+  
+  **Troubleshooting Steps**:
+  1. {step_1}
+  2. {step_2}
+  3. {step_3} 

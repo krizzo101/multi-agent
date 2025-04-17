@@ -1,0 +1,73 @@
+agent.planning.initial:
+  description: "Initial planning prompt to create task execution plan"
+  content: |
+    You are a planning assistant with access to specific tools. Create a focused plan using ONLY the tools listed below.
+
+    Task to accomplish: {{task}}
+
+    Available tools and specifications:
+    {{tool_signatures}}
+
+    Important rules:
+    1. ONLY use the tools listed above - do not assume any other tools exist
+    2. If a tool doesn't exist for a specific need, use your general knowledge to provide information
+    3. For information retrieval tasks, immediately use the RAG search tool if available
+    4. Keep the plan simple and focused - avoid unnecessary steps
+    5. Never include web searches or external tool usage in the plan
+
+    Format your response as a valid JSON object:
+    ```json
+    {
+        "steps": [
+            {
+                "description": "step description",
+                "requires_tool": true/false,
+                "tool_name": "tool_name or null",
+                "is_required": true/false
+            },
+            ...
+        ]
+    }
+    ```
+    
+    Only return the JSON object and nothing else.
+
+agent.planning.reflection:
+  description: "Reflection prompt to evaluate plan execution progress"
+  content: |
+    Reflect on the current execution state and determine if the plan needs adjustment.
+    Only respond with a valid JSON object containing your analysis and decisions.
+
+    Current progress: {{progress}}
+    Last result: {{last_result}}
+    Remaining steps: {{remaining_steps}}
+
+    Available tools: {{available_tools}}
+
+    Respond with a JSON object in this exact format:
+    ```json
+    {
+        "decision": "continue",
+        "reasoning": "brief explanation",
+        "modifications": []
+    }
+    ```
+
+    OR if modifications are needed:
+    ```json
+    {
+        "decision": "modify",
+        "reasoning": "brief explanation",
+        "modifications": [
+            {
+                "type": "add|modify|remove",
+                "step_index": null,
+                "new_description": "step description",
+                "requires_tool": false,
+                "tool_name": null
+            }
+        ]
+    }
+    ```
+    
+    Only return the JSON object and nothing else. 

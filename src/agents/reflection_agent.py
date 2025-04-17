@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Dict, Any, Optional
 from llama_index.core.llms import ChatMessage
 from llama_index.core.tools import FunctionTool
 import json
@@ -13,6 +13,10 @@ logger = logging.getLogger(__name__)
 
 class ReflectionAgent(BaseAgent):
     def __init__(self, llm: BaseLLM, options: AgentOptions, tools: List[FunctionTool] = []):
+        # Set default prompt template ID if not provided
+        if not hasattr(options, 'prompt_template_id') or options.prompt_template_id is None:
+            options.prompt_template_id = "agent.reflection.generation"
+            
         super().__init__(llm, options)
         self.tools = tools
         self.tools_dict = {tool.metadata.name: tool for tool in tools}
@@ -42,22 +46,31 @@ class ReflectionAgent(BaseAgent):
         if tool_name not in self.tools_dict:
             raise ValueError(f"Unknown tool: {tool_name}")
 
-        prompt = f"""
-        Generate parameters to call this tool:
-        Purpose: {description}
-        Tool: {tool_name}
+        # Get tool execution prompt template
+        prompt = self.get_prompt("agent.tool.execution", {
+            "tool_name": tool_name,
+            "description": description,
+            "tool_spec": json.dumps(self.tools_dict[tool_name].metadata.get_parameters_dict(), indent=2)
+        })
         
-        Tool specification:
-        {json.dumps(self.tools_dict[tool_name].metadata.get_parameters_dict(), indent=2)}
-        
-        Response format:
-        {{
-            "arguments": {{
-                // parameter names and values matching the specification exactly
+        if not prompt:
+            # Fallback to hardcoded prompt if template not found
+            prompt = f"""
+            Generate parameters to call this tool:
+            Purpose: {description}
+            Tool: {tool_name}
+            
+            Tool specification:
+            {json.dumps(self.tools_dict[tool_name].metadata.get_parameters_dict(), indent=2)}
+            
+            Response format:
+            {{
+                "arguments": {{
+                    // parameter names and values matching the specification exactly
+                }}
             }}
-        }}
-        Remove the ```json and ```
-        """
+            Remove the ```json and ```
+            """
         
         try:
             # Get tool parameters from LLM
@@ -132,27 +145,46 @@ class ReflectionAgent(BaseAgent):
     async def run(
         self,
         query: str,
-        generation_system_prompt: str = "",
-        reflection_system_prompt: str = "",
+        context: Dict[str, Any] = None,
         n_steps: int = 3,
         max_tool_steps: int = 2,
         verbose: bool = False,
+        **kwargs
     ) -> str:
-        # Initialize system prompts
-        full_gen_prompt = generation_system_prompt + BASE_GENERATION_SYSTEM_PROMPT
-        full_ref_prompt = reflection_system_prompt + BASE_REFLECTION_SYSTEM_PROMPT
-
+        # Initialize context
+        context = context or {}
+        context.update({
+            "agent_type": "reflection",
+            "conversation_stage": "generation"
+        })
+        
+        # Initialize generation system prompt using templates
+        generation_template_id = "agent.reflection.generation"
+        generation_system_prompt = self.get_prompt(generation_template_id, context)
+        
+        # Initialize reflection system prompt using templates
+        reflection_template_id = "agent.reflection.critique"
+        reflection_system_prompt = self.get_prompt(reflection_template_id, context)
+        
+        # If templates are not found, try scenario-based templates
+        if not generation_system_prompt:
+            generation_system_prompt = self.get_prompt_for_context(context) or ""
+            
+        if not reflection_system_prompt:
+            context["conversation_stage"] = "critique"
+            reflection_system_prompt = self.get_prompt_for_context(context) or ""
+        
         # Initialize chat histories
         generation_history = ChatHistory(
             initial_messages=[
-                self._create_system_message(full_gen_prompt),
+                self._create_system_message(generation_system_prompt),
                 ChatMessage(role="user", content=query)
             ],
             max_length=3
         )
 
         reflection_history = ChatHistory(
-            initial_messages=[self._create_system_message(full_ref_prompt)],
+            initial_messages=[self._create_system_message(reflection_system_prompt)],
             max_length=3
         )
 
@@ -199,23 +231,25 @@ class ReflectionAgent(BaseAgent):
         """
         tool_recommendations = []
         
-        # Basic pattern matching for tool recommendations
-        for tool_name in self.tools_dict.keys():
-            if tool_name.lower() in critique.lower():
-                # Try to extract the description after the tool name
-                import re
-                match = re.search(rf"{tool_name}\s+to\s+(.+)", critique, re.IGNORECASE)
-                if match:
-                    tool_recommendations.append((tool_name, match.group(1)))
-                else:
-                    # Fallback recommendation
-                    tool_recommendations.append((tool_name, "Improve the content"))
+        # Simple pattern matching - could be enhanced with regex
+        lines = critique.split("\n")
+        for line in lines:
+            line = line.strip()
+            for tool_name in self.tools_dict.keys():
+                if f"Use {tool_name}" in line or f"Try {tool_name}" in line:
+                    # Extract description after the tool name
+                    parts = line.split(tool_name, 1)
+                    if len(parts) > 1:
+                        description = parts[1].strip()
+                        if description.startswith("to "):
+                            description = description[3:]
+                        tool_recommendations.append((tool_name, description))
         
         return tool_recommendations
 
     async def __aenter__(self):
         return self
-
+        
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         # Cleanup code if needed
         pass

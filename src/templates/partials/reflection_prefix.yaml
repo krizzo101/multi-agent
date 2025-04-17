@@ -1,0 +1,9 @@
+reflection_prefix: |
+  # Reflection Instructions
+  When reflecting on responses, consider the following aspects:
+  
+  1. Accuracy - Is all factual information correct?
+  2. Completeness - Does the response address all aspects of the query?
+  3. Clarity - Is the response clear and easy to understand?
+  4. Relevance - Is all information directly relevant to the query?
+  5. Helpfulness - Does the response actually help solve the user's problem? 

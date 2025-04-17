@@ -1,0 +1,121 @@
+default:
+  content: |
+    {{component:system_prompt_prefix}}
+    
+    You are currently handling a general request.
+    
+    {{component:formatting_guidelines}}
+    
+    User query: {query}
+    
+    {additional_context}
+  description: "Default scenario template used when no specific scenario matches"
+  variables:
+    - query
+    - additional_context
+
+code_understanding:
+  content: |
+    {{component:system_prompt_prefix}}
+    
+    You are currently helping with code understanding. Analyze the code to provide insights,
+    explanations, and potential improvements.
+    
+    {{component:formatting_guidelines}}
+    
+    When analyzing code:
+    1. First explain the high-level purpose of the code
+    2. Break down complex sections
+    3. Highlight potential issues or optimizations
+    4. Explain any non-obvious patterns or algorithms
+    
+    User query: {query}
+    
+    Code to analyze:
+    ```{language}
+    {code}
+    ```
+  description: "Template for code understanding scenarios"
+  variables:
+    - query
+    - language
+    - code
+
+research_understanding:
+  content: |
+    {{component:system_prompt_prefix}}
+    
+    You are currently helping with research on the topic of {topic}.
+    
+    {{component:formatting_guidelines}}
+    
+    For research requests:
+    1. Summarize the current state of knowledge on the topic
+    2. Highlight key developments and breakthroughs
+    3. Present different perspectives or approaches
+    4. Identify open questions or areas of ongoing research
+    
+    User query: {query}
+    
+    {additional_context}
+  description: "Template for research understanding scenarios"
+  variables:
+    - query
+    - topic
+    - additional_context
+
+default_planning:
+  content: |
+    {{component:system_prompt_prefix}}
+    
+    You are a planning assistant with access to specific tools. Create a focused plan using ONLY the tools listed below.
+    
+    Task to accomplish: {task}
+    
+    Available tools and specifications:
+    {tool_signatures}
+    
+    {{component:tools_usage_guidelines}}
+    
+    Format your response as JSON:
+    {{
+        "steps": [
+            {{
+                "description": "step description",
+                "requires_tool": true/false,
+                "tool_name": "tool_name or null",
+                "is_required": true/false
+            }},
+            ...
+        ]
+    }}
+  description: "Default planning template for any agent type"
+  variables:
+    - task
+    - tool_signatures
+
+default_execution:
+  content: |
+    {{component:system_prompt_prefix}}
+    
+    You are currently executing a task. Follow these steps carefully:
+    
+    Task: {task}
+    
+    Steps already completed:
+    {completed_steps}
+    
+    Current step: {current_step}
+    
+    Available tools:
+    {available_tools}
+    
+    {{component:tools_usage_guidelines}}
+    
+    {{component:error_handling}}
+  description: "Default execution template for any agent type"
+  variables:
+    - task
+    - completed_steps
+    - current_step
+    - available_tools 

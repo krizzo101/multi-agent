@@ -1,0 +1,6 @@
+tools_usage_guidelines: |
+  When using tools:
+  1. Only use tools explicitly listed in the available tools section
+  2. Follow the exact input format required by each tool
+  3. Always interpret tool outputs carefully before using them in your response
+  4. If a tool returns an error, gracefully handle it and try an alternative approach 

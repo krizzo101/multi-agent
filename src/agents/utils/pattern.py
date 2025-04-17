@@ -1,5 +1,7 @@
 from typing import Any, List, Optional
 from llama_index.core.llms import ChatMessage
+import json
+import re
 
 class ChatHistory:
     def __init__(self, initial_messages: List[ChatMessage], max_length: int):
@@ -51,15 +53,45 @@ class ExecutionPlan:
 
 def clean_json_response(response: str) -> str:
     """Clean and extract JSON from LLM response"""
+    # Skip cleaning if already valid JSON
+    try:
+        json.loads(response)
+        return response
+    except (json.JSONDecodeError, TypeError):
+        pass
+    
     # Remove any markdown code block markers
-    response = response.replace("```json", "").replace("```", "").strip()
-        
+    response = re.sub(r'```(?:json)?|```', '', response, flags=re.IGNORECASE).strip()
+    
     # Find the first '{' and last '}'
     start = response.find('{')
     end = response.rfind('}')
-        
+    
     if start == -1 or end == -1:
-        raise ValueError("No valid JSON object found in response")
-            
+        # More aggressive attempt - get anything that looks remotely like JSON
+        start = re.search(r'[\{\[]', response)
+        end = re.search(r'[\}\]](?!.*[\}\]])', response)
+        
+        if not start or not end:
+            raise ValueError("No valid JSON object found in response")
+        
+        start = start.start()
+        end = end.start() + 1
+    
     # Extract just the JSON object
-    return response[start:end + 1]
+    extracted_json = response[start:end + 1]
+    
+    # Validate the extracted JSON
+    try:
+        json.loads(extracted_json)
+        return extracted_json
+    except json.JSONDecodeError:
+        # Try to fix common JSON issues (single quotes, unquoted keys)
+        try:
+            # Fix single quotes to double quotes (but not in string values)
+            fixed_json = re.sub(r"(?<!\w)'([^']*)'(?!\\)(?=\s*:)", r'"\1"', extracted_json)
+            # Try parsing again
+            json.loads(fixed_json)
+            return fixed_json
+        except (json.JSONDecodeError, re.error):
+            raise ValueError("Failed to extract valid JSON from response")

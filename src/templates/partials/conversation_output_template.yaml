@@ -1,0 +1,14 @@
+conversation_output_template: |
+  Your output should adhere to the following structure:
+  
+  **Summary**
+  {brief_summary}
+  
+  **Details**
+  {detailed_response}
+  
+  **References**
+  {references_used}
+  
+  **Next Steps**
+  {recommended_actions} 

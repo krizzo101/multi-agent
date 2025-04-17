@@ -6,7 +6,7 @@ import json
 from colorama import Fore
 from src.agents.base import BaseAgent, AgentOptions
 from src.agents.utils import clean_json_response
-from src.prompt import CLASSIFY_PROMPT  # Import centralized prompt
+from src.prompt import get_prompt  # Import the new prompt function
 logger = logging.getLogger(__name__)
 
 class ManagerAgent(BaseAgent):
@@ -44,13 +44,16 @@ class ManagerAgent(BaseAgent):
     ) -> Tuple[Optional[BaseAgent], float]:
         """Classify user request using LLM and return appropriate agent with confidence score"""
         try:
-            # Prepare classification prompt
-            classification_prompt = CLASSIFY_PROMPT.format(
-                agent_descriptions=self._get_agent_descriptions(),
-                user_input=user_input,
-                chat_history=self._format_chat_history(chat_history)
-            )
-            print(classification_prompt)
+            # Prepare classification prompt variables
+            variables = {
+                "agent_descriptions": self._get_agent_descriptions(),
+                "user_input": user_input,
+                "chat_history": self._format_chat_history(chat_history)
+            }
+            
+            # Get classification prompt from template system
+            classification_prompt = get_prompt("agent.classify", variables)
+            
             # Get classification from LLM
             response = await self.llm.achat(classification_prompt)
             response = clean_json_response(response)
@@ -67,7 +70,7 @@ class ManagerAgent(BaseAgent):
                 if selected_agent:
                     logger.info(
                         f"{Fore.CYAN}Request classified to {selected_agent.name} "
-                        f"(confidence: {confidence:.2f}). Reasoning: {reasoning}{Fore.RESET}"
+                        f"with confidence {confidence:.2f}. Reasoning: {reasoning}{Fore.RESET}"
                     )
                     return selected_agent, confidence
                 else:
@@ -114,10 +117,18 @@ class ManagerAgent(BaseAgent):
                     f"with confidence {confidence:.2f}{Fore.RESET}"
                 )
             
+            # Create context for scenario-based prompt selection
+            context = {
+                "conversation_stage": "understanding",
+                "agent_type": selected_agent.id,
+                "intent": selected_agent.id.split("_")[0] if "_" in selected_agent.id else "general"
+            }
+            
             # Execute the request with the selected agent
             response = await selected_agent.run(
                 query=query,
-                verbose = True,
+                verbose=verbose,
+                context=context,
                 # user_id=user_id,
                 # session_id=session_id,
                 # chat_history=chat_history,
