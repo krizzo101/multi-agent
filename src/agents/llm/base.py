@@ -6,10 +6,9 @@ from llama_index.llms.anthropic import Anthropic
 from llama_index.llms.gemini import Gemini
 from llama_index.llms.openai import OpenAI
 from src.config import Config
-from src.logger import get_formatted_logger
+import logging
 
-
-logger = get_formatted_logger(__file__)
+logger = logging.getLogger(__name__)
 
 class BaseLLM(ABC):
     def __init__(
