@@ -27,12 +27,24 @@ class ClaudeLLM(BaseLLM):
         try:
             tokenizer = Anthropic().tokenizer
             Settings.tokenizer = tokenizer
-            self.model = Anthropic(
-                api_key=self.api_key,
-                model=self.model_id,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens
-            )
+            
+            config = Config()
+            model_config = {
+                'api_key': self.api_key,
+                'model': self.model_id,
+                'temperature': self.temperature,
+                'max_tokens': self.max_tokens,
+                'top_p': config.CLAUDE_CONFIG.top_p,
+            }
+            
+            # Add endpoint config if available
+            endpoint_cfg = config.CLAUDE_CONFIG.endpoint_config
+            if endpoint_cfg.api_base:
+                model_config['api_base'] = endpoint_cfg.api_base
+            if endpoint_cfg.api_version:
+                model_config['api_version'] = endpoint_cfg.api_version
+                
+            self.model = Anthropic(**model_config)
         except Exception as e:
             logger.error(f"Failed to initialize Claude model: {str(e)}")
             raise

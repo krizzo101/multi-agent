@@ -6,34 +6,8 @@ import json
 from colorama import Fore
 from src.agents.base import BaseAgent, AgentOptions
 from src.agents.utils import clean_json_response
+from src.prompt import CLASSIFY_PROMPT  # Import centralized prompt
 logger = logging.getLogger(__name__)
-
-CLASSIFY_PROMPT = """\
-You are AgentMatcher, an intelligent assistant designed to analyze user queries and match them with 
-the most suitable agent or department. Your task is to understand the user request,
-identify key entities and intents, and determine which agent or department would be best equipped
-to handle the query.
-
-Important: The user input may be a follow-up response to a previous interaction.
-The conversation history, including the name of the previously selected agent, is provided.
-If the user's input appears to be a continuation of the previous conversation
-(e.g., 'yes', 'ok', 'I want to know more', '1'), select the same agent as before.
-
-Available agents and their capabilities: {agent_descriptions}
-
-Based on the user input and chat history, determine the most appropriate agent and provide a confidence score (0-1).
-
-Respond in JSON format:
-{{
-    "selected_agent": "agent_id",
-    "confidence": 0.0,
-    "reasoning": "brief explanation"
-}}
-        
-User input: {user_input}
-Recent chat history: {chat_history}
-\
-"""
 
 class ManagerAgent(BaseAgent):
     def __init__(self, llm: BaseLLM, options: AgentOptions):

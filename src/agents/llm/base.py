@@ -51,10 +51,12 @@ class BaseLLM(ABC):
                     additional_kwargs={
                         'generation_config': {
                             'temperature': self.temperature if self.temperature else global_settings.GEMINI_CONFIG.temperature,
-                            'top_p': 0.8,
-                            'top_k': 40,
+                            'top_p': global_settings.GEMINI_CONFIG.top_p,
+                            'top_k': global_settings.GEMINI_CONFIG.top_k,
                         }
                     },
+                    api_base=global_settings.GEMINI_CONFIG.endpoint_config.api_base if global_settings.GEMINI_CONFIG.endpoint_config.api_base else None,
+                    api_version=global_settings.GEMINI_CONFIG.endpoint_config.api_version if global_settings.GEMINI_CONFIG.endpoint_config.api_version else None,
                 )
             # elif self.model_name == "claude":
             #     self.model = Anthropic(
@@ -64,12 +66,28 @@ class BaseLLM(ABC):
             #         max_tokens=self.max_tokens
             #     )
             elif self.model_name in ["gpt-4.1-nano-2025-04-14", "gpt-4.1-nano", "gpt-4.1-mini-2025-04-14", "gpt-4.1-mini", "o3-mini-2025-01-31", "o3-mini"]:
-                self.model = OpenAI(
-                    api_key=self.api_key if self.api_key else global_settings.OPENAI_CONFIG.api_key,
-                    model=self.model_id if self.model_id else global_settings.OPENAI_CONFIG.model_id,
-                    temperature=self.temperature if self.temperature else global_settings.OPENAI_CONFIG.temperature,
-                    max_tokens=self.max_tokens if self.max_tokens else global_settings.OPENAI_CONFIG.max_tokens
-                )
+                config = {
+                    'api_key': self.api_key if self.api_key else global_settings.OPENAI_CONFIG.api_key,
+                    'model': self.model_id if self.model_id else global_settings.OPENAI_CONFIG.model_id,
+                    'temperature': self.temperature if self.temperature else global_settings.OPENAI_CONFIG.temperature,
+                    'max_tokens': self.max_tokens if self.max_tokens else global_settings.OPENAI_CONFIG.max_tokens,
+                }
+                
+                # Add optional endpoint configuration if provided
+                endpoint_cfg = global_settings.OPENAI_CONFIG.endpoint_config
+                if endpoint_cfg.api_base:
+                    config['api_base'] = endpoint_cfg.api_base
+                if endpoint_cfg.organization_id:
+                    config['organization_id'] = endpoint_cfg.organization_id
+                if endpoint_cfg.api_version:
+                    config['api_version'] = endpoint_cfg.api_version
+                    
+                # Add additional parameters
+                config['top_p'] = global_settings.OPENAI_CONFIG.top_p
+                config['frequency_penalty'] = global_settings.OPENAI_CONFIG.frequency_penalty
+                config['presence_penalty'] = global_settings.OPENAI_CONFIG.presence_penalty
+                
+                self.model = OpenAI(**config)
             else:
                 raise ValueError(f"Unsupported model type: {self.model_name}")
         except Exception as e:

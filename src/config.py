@@ -5,6 +5,15 @@ dotenv.load_dotenv()
 import os
 from src.prompt import (LLM_SYSTEM_PROMPT)
 
+# LLM Provider Settings
+class LLMEndpointConfig(BaseModel):
+    """Configuration for LLM API endpoints and provider settings"""
+    api_base: str = ""  # API base URL
+    organization_id: str = ""  # Organization ID (for OpenAI, etc.)
+    api_version: str = ""  # API version
+    deployment_id: str = ""  # Deployment ID (for Azure, etc.)
+    timeout: int = 60  # Request timeout
+
 # LLM Configuration
 class LLMConfig(BaseModel):
     api_key: str
@@ -13,6 +22,14 @@ class LLMConfig(BaseModel):
     temperature: float = 0.7
     max_tokens: int = 2048
     system_prompt: str = "You are a helpful assistant."
+    # Additional parameters for LLM generation
+    top_p: float = Field(default=1.0)
+    top_k: int = Field(default=40)
+    frequency_penalty: float = Field(default=0.0)
+    presence_penalty: float = Field(default=0.0)
+    stop_sequences: list = Field(default_factory=list)
+    # Provider-specific endpoint config
+    endpoint_config: LLMEndpointConfig = Field(default_factory=LLMEndpointConfig)
 
 # Agent Configuration
 class AgentConfig(BaseModel):
@@ -49,7 +66,16 @@ class Config:
         model_id=os.environ.get('OPENAI_MODEL_ID', 'gpt-3.5-turbo'),
         temperature=float(os.environ.get('OPENAI_TEMPERATURE', '0.7')),
         max_tokens=int(os.environ.get('OPENAI_MAX_TOKENS', '2048')),
-        system_prompt=LLM_SYSTEM_PROMPT
+        system_prompt=LLM_SYSTEM_PROMPT,
+        top_p=float(os.environ.get('OPENAI_TOP_P', '1.0')),
+        top_k=int(os.environ.get('OPENAI_TOP_K', '40')),
+        frequency_penalty=float(os.environ.get('OPENAI_FREQUENCY_PENALTY', '0.0')),
+        presence_penalty=float(os.environ.get('OPENAI_PRESENCE_PENALTY', '0.0')),
+        endpoint_config=LLMEndpointConfig(
+            api_base=os.environ.get('OPENAI_API_BASE', ''),
+            organization_id=os.environ.get('OPENAI_ORGANIZATION_ID', ''),
+            api_version=os.environ.get('OPENAI_API_VERSION', '')
+        )
     )
 
     GEMINI_CONFIG = LLMConfig(
@@ -58,7 +84,13 @@ class Config:
         model_id=os.environ.get('GEMINI_MODEL_ID', 'models/gemini-1.5-flash'),
         temperature=float(os.environ.get('GEMINI_TEMPERATURE', '0.8')),
         max_tokens=int(os.environ.get('GEMINI_MAX_TOKENS', '2048')),
-        system_prompt=LLM_SYSTEM_PROMPT
+        system_prompt=LLM_SYSTEM_PROMPT,
+        top_p=float(os.environ.get('GEMINI_TOP_P', '0.8')),
+        top_k=int(os.environ.get('GEMINI_TOP_K', '40')),
+        endpoint_config=LLMEndpointConfig(
+            api_base=os.environ.get('GEMINI_API_BASE', ''),
+            api_version=os.environ.get('GEMINI_API_VERSION', '')
+        )
     )
     
     CLAUDE_CONFIG = LLMConfig(
@@ -67,7 +99,12 @@ class Config:
         model_id=os.environ.get('CLAUDE_MODEL_ID', 'claude-3-haiku-20240307'),
         temperature=float(os.environ.get('CLAUDE_TEMPERATURE', '0.7')),
         max_tokens=int(os.environ.get('CLAUDE_MAX_TOKENS', '4000')),
-        system_prompt=LLM_SYSTEM_PROMPT
+        system_prompt=LLM_SYSTEM_PROMPT,
+        top_p=float(os.environ.get('CLAUDE_TOP_P', '1.0')),
+        endpoint_config=LLMEndpointConfig(
+            api_base=os.environ.get('ANTHROPIC_API_BASE', ''),
+            api_version=os.environ.get('ANTHROPIC_API_VERSION', '')
+        )
     )
     
     # Agent Configuration
