@@ -10,8 +10,8 @@ global_settings = Config()
 # Set up logging
 def setup_logging():
     """Initialize logging configuration based on global settings"""
-    log_level = getattr(logging, global_settings.LOGGING_CONFIG.level.upper(), logging.INFO)
-    log_format = global_settings.LOGGING_CONFIG.format
+    log_level = getattr(logging, global_settings.logging.level.upper(), logging.INFO)
+    log_format = global_settings.logging.format
     
     # Configure basic settings
     logging.basicConfig(
@@ -20,9 +20,9 @@ def setup_logging():
     )
     
     # Add file handler if log_to_file is enabled
-    if global_settings.LOGGING_CONFIG.log_to_file:
+    if global_settings.logging.log_to_file:
         # Create log directory if it doesn't exist
-        log_dir = global_settings.LOGGING_CONFIG.log_dir
+        log_dir = global_settings.logging.log_dir
         os.makedirs(log_dir, exist_ok=True)
         
         # Create date-based directory
@@ -42,7 +42,7 @@ def setup_logging():
         logging.getLogger('').addHandler(file_handler)
         
         # Log initialization message
-        logging.info(f"Logging initialized with level {global_settings.LOGGING_CONFIG.level}")
+        logging.info(f"Logging initialized with level {global_settings.logging.level}")
 
 # Initialize logging when this module is imported
 setup_logging()

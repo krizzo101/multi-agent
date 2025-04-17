@@ -1,3 +1,81 @@
+# Configuration System Documentation
+
+## Overview
+The configuration system supports YAML-based configuration files, environment variable overrides, robust schema validation, and backward compatibility with legacy config methods. This document describes the configuration structure, usage, and migration guidance.
+
+## 1. Configuration Structure
+- All configuration options are defined in a YAML file (e.g., `config.yaml`).
+- Environment variables can override any YAML value.
+- The configuration is validated against a schema (see below).
+- Legacy config API is supported via a compatibility layer.
+
+## 2. Example YAML Configuration
+```yaml
+llm:
+  api_key: "sk-..."
+  model_name: "gpt-4.1-mini"
+  model_id: "gpt-4.1-mini-2025-04-14"
+  temperature: 0.7
+  max_tokens: 2048
+  endpoint_config:
+    api_base: "https://api.openai.com/v1"
+    organization_id: "org-..."
+    api_version: "2024-05-01"
+
+agent:
+  save_chat: true
+  verbose_logging: false
+  max_retries: 3
+  timeout_seconds: 60
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+  reload: true
+
+ui:
+  port: 8501
+  address: "0.0.0.0"
+  theme: "light"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s | %(levelname)-8s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s"
+  log_to_file: true
+  log_dir: "logs"
+```
+
+## 3. Environment Variable Overrides
+- Any YAML value can be overridden by setting the corresponding environment variable (e.g., `OPENAI_API_KEY`, `API_PORT`).
+- Environment variables take precedence over YAML values.
+
+## 4. Schema Validation
+- The configuration is validated using Pydantic models (see `src/config.py`).
+- Invalid or missing values will raise clear, actionable errors at startup.
+
+## 5. Backward Compatibility
+- The legacy config API is supported via the `LegacyAdapter` in `src/config.py`.
+- Existing code using the old config interface will continue to work.
+
+## 6. Usage Example
+```python
+from src.config import Config
+config = Config()
+llm_config = config.get_default_llm_config()
+api_config = config.API_CONFIG
+```
+
+## 7. Migration Guide
+- Move all configuration values from `.env` or old config files to `config.yaml`.
+- Set environment variables for any sensitive or environment-specific values.
+- Update code to use the new config API where possible.
+- Legacy code will continue to work via the compatibility layer.
+
+## 8. References
+- See `src/config.py` for implementation details.
+- See `requirements.md` and `system_design.md` for requirements and design rationale.
+
 # Configuration System
 
 This document details the Multi-Agent system's centralized configuration architecture and how to customize it for your needs.

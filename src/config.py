@@ -1,9 +1,54 @@
 from dataclasses import dataclass
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 import dotenv 
 dotenv.load_dotenv()
 import os
 from src.prompt import (LLM_SYSTEM_PROMPT)
+from typing import Any, Dict
+
+# --- YAML Support ---
+try:
+    from ruamel.yaml import YAML
+    _yaml_loader = YAML(typ="safe")
+    def load_yaml(path):
+        with open(path, 'r') as f:
+            return _yaml_loader.load(f)
+except ImportError:
+    import yaml
+    def load_yaml(path):
+        with open(path, 'r') as f:
+            return yaml.safe_load(f)
+
+# --- CONFIGURATION LOADER ---
+def _deep_update(d: dict, u: dict) -> dict:
+    for k, v in u.items():
+        if isinstance(v, dict) and isinstance(d.get(k), dict):
+            d[k] = _deep_update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
+
+def _env_override(config: dict, prefix: str = "") -> dict:
+    for k, v in config.items():
+        env_key = (prefix + k).upper()
+        if isinstance(v, dict):
+            config[k] = _env_override(v, env_key + "_")
+        else:
+            env_val = os.environ.get(env_key)
+            if env_val is not None:
+                # Try to cast to the type of v
+                try:
+                    if isinstance(v, bool):
+                        config[k] = env_val.lower() in ("1", "true", "yes")
+                    elif isinstance(v, int):
+                        config[k] = int(env_val)
+                    elif isinstance(v, float):
+                        config[k] = float(env_val)
+                    else:
+                        config[k] = env_val
+                except Exception:
+                    config[k] = env_val
+    return config
 
 # LLM Provider Settings
 class LLMEndpointConfig(BaseModel):
@@ -16,9 +61,9 @@ class LLMEndpointConfig(BaseModel):
 
 # LLM Configuration
 class LLMConfig(BaseModel):
-    api_key: str
-    model_name: str
-    model_id: str
+    api_key: str = ""
+    model_name: str = "GPT"
+    model_id: str = "gpt-4-turbo"
     temperature: float = 0.7
     max_tokens: int = 2048
     system_prompt: str = "You are a helpful assistant."
@@ -58,166 +103,186 @@ class LoggingConfig(BaseModel):
     log_to_file: bool = Field(default=True)
     log_dir: str = Field(default="logs")
 
+# --- YAML + ENV CONFIG LOADING ---
+def load_config_yaml_env(yaml_path: str = "config.yaml") -> Dict[str, Any]:
+    config = {}
+    if os.path.exists(yaml_path):
+        config = load_yaml(yaml_path) or {}
+    config = _env_override(config)
+    return config
+
+# --- MAIN CONFIG CLASS (ENHANCED) ---
 class Config:
-    # Default values for environment variables
-    # These serve as a second layer of fallbacks
-    
-    # Default LLM Selection
+    """
+    Enhanced configuration loader supporting YAML, env vars, schema validation, and legacy compatibility.
+    Usage:
+        from src.config import Config
+        config = Config()
+        llm_config = config.llm
+        api_config = config.api
+    """
+    # Default LLM type
     DEFAULT_LLM = "openai"
     
-    # Model type identifiers
-    OPENAI_MODEL_TYPES = ["openai", "gpt", "azure"]  # Identifiers used to recognize OpenAI models
-    GEMINI_MODEL_TYPES = ["gemini", "google"]        # Identifiers used to recognize Gemini models
-    CLAUDE_MODEL_TYPES = ["claude", "anthropic"]     # Identifiers used to recognize Claude models
-    
-    # OpenAI Defaults
-    OPENAI_API_KEY = ""
-    OPENAI_MODEL_NAME = "GPT"
-    OPENAI_MODEL_ID = "gpt-3.5-turbo"
-    OPENAI_TEMPERATURE = 0.7
-    OPENAI_MAX_TOKENS = 2048
-    OPENAI_TOP_P = 1.0
-    OPENAI_TOP_K = 40
-    OPENAI_FREQUENCY_PENALTY = 0.0
-    OPENAI_PRESENCE_PENALTY = 0.0
-    OPENAI_API_BASE = ""
-    OPENAI_ORGANIZATION_ID = ""
-    OPENAI_API_VERSION = ""
-    
-    # Model lists for validation and special handling
-    OPENAI_SMALL_MODELS = ["gpt-4.1-nano-2025-04-14", "gpt-4.1-nano", "gpt-4.1-mini-2025-04-14", "gpt-4.1-mini", "o3-mini-2025-01-31", "o3-mini"]
-    
-    # Gemini Defaults
-    GOOGLE_API_KEY = ""
-    GEMINI_MODEL_NAME = "Gemini"
-    GEMINI_MODEL_ID = "models/gemini-1.5-flash"
-    GEMINI_TEMPERATURE = 0.8
-    GEMINI_MAX_TOKENS = 2048
-    GEMINI_TOP_P = 0.8
-    GEMINI_TOP_K = 40
-    GEMINI_API_BASE = ""
-    GEMINI_API_VERSION = ""
-    
-    # Claude Defaults
-    ANTHROPIC_API_KEY = ""
-    CLAUDE_MODEL_NAME = "Claude"
-    CLAUDE_MODEL_ID = "claude-3-haiku-20240307"
-    CLAUDE_TEMPERATURE = 0.7
-    CLAUDE_MAX_TOKENS = 4000
-    CLAUDE_TOP_P = 1.0
-    ANTHROPIC_API_BASE = ""
-    ANTHROPIC_API_VERSION = ""
-    
-    # Agent Configuration Defaults
-    SAVE_CHAT = True
-    VERBOSE_LOGGING = False
-    MAX_RETRIES = 3
-    TIMEOUT_SECONDS = 60
-    
-    # API Configuration Defaults
-    API_HOST = "0.0.0.0"
-    API_PORT = 8000
-    API_DEBUG = False
-    API_RELOAD = True
-    
-    # UI Configuration Defaults
-    UI_PORT = 8501
-    UI_ADDRESS = "0.0.0.0"
-    UI_THEME = "light"
-    
-    # Logging Configuration Defaults
-    LOG_LEVEL = "INFO"
-    LOG_FORMAT = "%(asctime)s | %(levelname)-8s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s"
-    LOG_TO_FILE = True
-    LOG_DIR = "logs"
-    
-    # LLM Configurations
-    OPENAI_CONFIG = LLMConfig(
-        api_key=os.environ.get('OPENAI_API_KEY', OPENAI_API_KEY),
-        model_name=OPENAI_MODEL_NAME,
-        model_id=os.environ.get('OPENAI_MODEL_ID', OPENAI_MODEL_ID),
-        temperature=float(os.environ.get('OPENAI_TEMPERATURE', OPENAI_TEMPERATURE)),
-        max_tokens=int(os.environ.get('OPENAI_MAX_TOKENS', OPENAI_MAX_TOKENS)),
-        system_prompt=LLM_SYSTEM_PROMPT,
-        top_p=float(os.environ.get('OPENAI_TOP_P', OPENAI_TOP_P)),
-        top_k=int(os.environ.get('OPENAI_TOP_K', OPENAI_TOP_K)),
-        frequency_penalty=float(os.environ.get('OPENAI_FREQUENCY_PENALTY', OPENAI_FREQUENCY_PENALTY)),
-        presence_penalty=float(os.environ.get('OPENAI_PRESENCE_PENALTY', OPENAI_PRESENCE_PENALTY)),
-        endpoint_config=LLMEndpointConfig(
-            api_base=os.environ.get('OPENAI_API_BASE', OPENAI_API_BASE),
-            organization_id=os.environ.get('OPENAI_ORGANIZATION_ID', OPENAI_ORGANIZATION_ID),
-            api_version=os.environ.get('OPENAI_API_VERSION', OPENAI_API_VERSION)
-        )
-    )
+    def __init__(self, yaml_path: str = "config.yaml"):
+        # Load YAML and env
+        raw = load_config_yaml_env(yaml_path)
+        
+        # Initialize with default values and override with loaded config
+        self.llm = LLMConfig(**raw.get("llm", {}))
+        self.agent = AgentConfig(**raw.get("agent", {}))
+        self.api = APIConfig(**raw.get("api", {}))
+        self.ui = UIConfig(**raw.get("ui", {}))
+        self.logging = LoggingConfig(**raw.get("logging", {}))
+        
+        # Initialize provider-specific configs
+        gemini_defaults = {
+            "api_key": os.environ.get("GOOGLE_API_KEY", ""),
+            "model_name": "Gemini",
+            "model_id": "models/gemini-1.5-flash",
+            "temperature": 0.8,
+            "max_tokens": 2048,
+            "system_prompt": LLM_SYSTEM_PROMPT,
+            "top_p": 0.8,
+            "top_k": 40,
+            "endpoint_config": {
+                "api_base": "",
+                "api_version": ""
+            }
+        }
+        
+        claude_defaults = {
+            "api_key": os.environ.get("ANTHROPIC_API_KEY", ""),
+            "model_name": "Claude",
+            "model_id": "claude-3-haiku-20240307",
+            "temperature": 0.7,
+            "max_tokens": 4000,
+            "system_prompt": LLM_SYSTEM_PROMPT,
+            "top_p": 1.0,
+            "endpoint_config": {
+                "api_base": "",
+                "api_version": ""
+            }
+        }
+        
+        # Store provider-specific configs
+        self.OPENAI_CONFIG = self.llm
+        self.GEMINI_CONFIG = LLMConfig(**gemini_defaults)
+        self.CLAUDE_CONFIG = LLMConfig(**claude_defaults)
+        
+        try:
+            # Validate all configurations
+            self.llm = LLMConfig(**raw.get("llm", {}))
+            self.agent = AgentConfig(**raw.get("agent", {}))
+            self.api = APIConfig(**raw.get("api", {}))
+            self.ui = UIConfig(**raw.get("ui", {}))
+            self.logging = LoggingConfig(**raw.get("logging", {}))
+        except ValidationError as e:
+            raise RuntimeError(f"Configuration validation error: {e}")
 
-    GEMINI_CONFIG = LLMConfig(
-        api_key=os.environ.get('GOOGLE_API_KEY', GOOGLE_API_KEY),
-        model_name=GEMINI_MODEL_NAME,
-        model_id=os.environ.get('GEMINI_MODEL_ID', GEMINI_MODEL_ID),
-        temperature=float(os.environ.get('GEMINI_TEMPERATURE', GEMINI_TEMPERATURE)),
-        max_tokens=int(os.environ.get('GEMINI_MAX_TOKENS', GEMINI_MAX_TOKENS)),
-        system_prompt=LLM_SYSTEM_PROMPT,
-        top_p=float(os.environ.get('GEMINI_TOP_P', GEMINI_TOP_P)),
-        top_k=int(os.environ.get('GEMINI_TOP_K', GEMINI_TOP_K)),
-        endpoint_config=LLMEndpointConfig(
-            api_base=os.environ.get('GEMINI_API_BASE', GEMINI_API_BASE),
-            api_version=os.environ.get('GEMINI_API_VERSION', GEMINI_API_VERSION)
-        )
-    )
-    
-    CLAUDE_CONFIG = LLMConfig(
-        api_key=os.environ.get('ANTHROPIC_API_KEY', ANTHROPIC_API_KEY),
-        model_name=CLAUDE_MODEL_NAME,
-        model_id=os.environ.get('CLAUDE_MODEL_ID', CLAUDE_MODEL_ID),
-        temperature=float(os.environ.get('CLAUDE_TEMPERATURE', CLAUDE_TEMPERATURE)),
-        max_tokens=int(os.environ.get('CLAUDE_MAX_TOKENS', CLAUDE_MAX_TOKENS)),
-        system_prompt=LLM_SYSTEM_PROMPT,
-        top_p=float(os.environ.get('CLAUDE_TOP_P', CLAUDE_TOP_P)),
-        endpoint_config=LLMEndpointConfig(
-            api_base=os.environ.get('ANTHROPIC_API_BASE', ANTHROPIC_API_BASE),
-            api_version=os.environ.get('ANTHROPIC_API_VERSION', ANTHROPIC_API_VERSION)
-        )
-    )
-    
-    # Agent Configuration
-    AGENT_CONFIG = AgentConfig(
-        save_chat=os.environ.get('SAVE_CHAT', str(SAVE_CHAT)).lower() == 'true',
-        verbose_logging=os.environ.get('VERBOSE_LOGGING', str(VERBOSE_LOGGING)).lower() == 'true',
-        max_retries=int(os.environ.get('MAX_RETRIES', MAX_RETRIES)),
-        timeout_seconds=int(os.environ.get('TIMEOUT_SECONDS', TIMEOUT_SECONDS))
-    )
-    
-    # API Configuration
-    API_CONFIG = APIConfig(
-        host=os.environ.get('API_HOST', API_HOST),
-        port=int(os.environ.get('API_PORT', API_PORT)),
-        debug=os.environ.get('API_DEBUG', str(API_DEBUG)).lower() == 'true',
-        reload=os.environ.get('API_RELOAD', str(API_RELOAD)).lower() == 'true'
-    )
-    
-    # UI Configuration
-    UI_CONFIG = UIConfig(
-        port=int(os.environ.get('UI_PORT', UI_PORT)),
-        address=os.environ.get('UI_ADDRESS', UI_ADDRESS),
-        theme=os.environ.get('UI_THEME', UI_THEME)
-    )
-    
-    # Logging Configuration
-    LOGGING_CONFIG = LoggingConfig(
-        level=os.environ.get('LOG_LEVEL', LOG_LEVEL),
-        format=os.environ.get('LOG_FORMAT', LOG_FORMAT),
-        log_to_file=os.environ.get('LOG_TO_FILE', str(LOG_TO_FILE)).lower() == 'true',
-        log_dir=os.environ.get('LOG_DIR', LOG_DIR)
-    )
-    
-    # Get default LLM based on environment variable
     @staticmethod
     def get_default_llm_config():
+        """Get default LLM configuration based on environment variable"""
+        config = Config()
         default_llm = os.environ.get('DEFAULT_LLM', Config.DEFAULT_LLM).lower()
         if default_llm == 'gemini':
-            return Config.GEMINI_CONFIG
+            return config.GEMINI_CONFIG
         elif default_llm == 'claude':
-            return Config.CLAUDE_CONFIG
+            return config.CLAUDE_CONFIG
         else:
-            return Config.OPENAI_CONFIG
+            return config.OPENAI_CONFIG
+
+# --- LEGACY ADAPTER ---
+class LegacyAdapter:
+    """
+    Provides backward compatibility for legacy config API.
+    Usage:
+        from src.config import LegacyAdapter
+        legacy = LegacyAdapter()
+        openai_key = legacy.OPENAI_API_KEY
+    """
+    def __init__(self, config: Config = None):
+        self._config = config or Config()
+        # OpenAI configurations
+        self.OPENAI_API_KEY = self._config.llm.api_key
+        self.OPENAI_MODEL_NAME = self._config.llm.model_name
+        self.OPENAI_MODEL_ID = self._config.llm.model_id
+        self.OPENAI_TEMPERATURE = self._config.llm.temperature
+        self.OPENAI_MAX_TOKENS = self._config.llm.max_tokens
+        self.OPENAI_TOP_P = self._config.llm.top_p
+        self.OPENAI_TOP_K = self._config.llm.top_k
+        self.OPENAI_FREQUENCY_PENALTY = self._config.llm.frequency_penalty
+        self.OPENAI_PRESENCE_PENALTY = self._config.llm.presence_penalty
+        self.OPENAI_API_BASE = self._config.llm.endpoint_config.api_base
+        self.OPENAI_ORGANIZATION_ID = self._config.llm.endpoint_config.organization_id
+        self.OPENAI_API_VERSION = self._config.llm.endpoint_config.api_version
+        
+        # Gemini configurations
+        self.GOOGLE_API_KEY = self._config.GEMINI_CONFIG.api_key
+        self.GEMINI_MODEL_NAME = self._config.GEMINI_CONFIG.model_name
+        self.GEMINI_MODEL_ID = self._config.GEMINI_CONFIG.model_id
+        self.GEMINI_TEMPERATURE = self._config.GEMINI_CONFIG.temperature
+        self.GEMINI_MAX_TOKENS = self._config.GEMINI_CONFIG.max_tokens
+        self.GEMINI_TOP_P = self._config.GEMINI_CONFIG.top_p
+        self.GEMINI_TOP_K = self._config.GEMINI_CONFIG.top_k
+        self.GEMINI_API_BASE = self._config.GEMINI_CONFIG.endpoint_config.api_base
+        self.GEMINI_API_VERSION = self._config.GEMINI_CONFIG.endpoint_config.api_version
+        
+        # Claude configurations
+        self.ANTHROPIC_API_KEY = self._config.CLAUDE_CONFIG.api_key
+        self.CLAUDE_MODEL_NAME = self._config.CLAUDE_CONFIG.model_name
+        self.CLAUDE_MODEL_ID = self._config.CLAUDE_CONFIG.model_id
+        self.CLAUDE_TEMPERATURE = self._config.CLAUDE_CONFIG.temperature
+        self.CLAUDE_MAX_TOKENS = self._config.CLAUDE_CONFIG.max_tokens
+        self.CLAUDE_TOP_P = self._config.CLAUDE_CONFIG.top_p
+        self.ANTHROPIC_API_BASE = self._config.CLAUDE_CONFIG.endpoint_config.api_base
+        self.ANTHROPIC_API_VERSION = self._config.CLAUDE_CONFIG.endpoint_config.api_version
+        
+        # Agent configurations
+        self.SAVE_CHAT = self._config.agent.save_chat
+        self.VERBOSE_LOGGING = self._config.agent.verbose_logging
+        self.MAX_RETRIES = self._config.agent.max_retries
+        self.TIMEOUT_SECONDS = self._config.agent.timeout_seconds
+        
+        # API configurations
+        self.API_HOST = self._config.api.host
+        self.API_PORT = self._config.api.port
+        self.API_DEBUG = self._config.api.debug
+        self.API_RELOAD = self._config.api.reload
+        
+        # UI configurations
+        self.UI_PORT = self._config.ui.port
+        self.UI_ADDRESS = self._config.ui.address
+        self.UI_THEME = self._config.ui.theme
+        
+        # Logging configurations
+        self.LOG_LEVEL = self._config.logging.level
+        self.LOG_FORMAT = self._config.logging.format
+        self.LOG_TO_FILE = self._config.logging.log_to_file
+        self.LOG_DIR = self._config.logging.log_dir
+
+# Model type identifiers
+OPENAI_MODEL_TYPES = ["openai", "gpt", "azure"]  # Identifiers used to recognize OpenAI models
+GEMINI_MODEL_TYPES = ["gemini", "google"]        # Identifiers used to recognize Gemini models
+CLAUDE_MODEL_TYPES = ["claude", "anthropic"]     # Identifiers used to recognize Claude models
+OPENAI_SMALL_MODELS = ["gpt-4.1-nano-2025-04-14", "gpt-4.1-nano", "gpt-4.1-mini-2025-04-14", "gpt-4.1-mini", "o3-mini-2025-01-31", "o3-mini"]
+
+# Create default configuration instances
+config = Config()
+legacy = LegacyAdapter(config)
+
+# Make model type identifiers accessible via the global config instance
+config.OPENAI_MODEL_TYPES = OPENAI_MODEL_TYPES
+config.GEMINI_MODEL_TYPES = GEMINI_MODEL_TYPES
+config.CLAUDE_MODEL_TYPES = CLAUDE_MODEL_TYPES
+config.OPENAI_SMALL_MODELS = OPENAI_SMALL_MODELS
+
+# Create configuration instances for easy access
+AGENT_CONFIG = config.agent
+API_CONFIG = config.api
+UI_CONFIG = config.ui
+LOGGING_CONFIG = config.logging
+
+# All legacy global configuration variables and functions have been removed.
+# Configuration is now exclusively handled by the Config class and LegacyAdapter.
 
