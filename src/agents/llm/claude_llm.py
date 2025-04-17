@@ -66,7 +66,7 @@ class ClaudeLLM(BaseLLM):
         return messages
 
     def _extract_response(self, response) -> str:
-        """Trích xuất text từ response của Claude."""
+        """Extract text from Claude response."""
         try:
             if hasattr(response, 'text'):
                 return response.text
@@ -141,7 +141,7 @@ class ClaudeLLM(BaseLLM):
             raise
     @asynccontextmanager
     async def session(self):
-        """Context manager để quản lý phiên làm việc với model"""
+        """Context manager for managing the session with the model"""
         try:
             yield self
         finally:

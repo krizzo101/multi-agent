@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Generator, List, Optional
 from llama_index.core.llms import ChatMessage
-# from llama_index.llms.anthropic import Anthropic
+from llama_index.llms.anthropic import Anthropic
 from llama_index.llms.gemini import Gemini
 from llama_index.llms.openai import OpenAI
 from src.config import Config
@@ -39,64 +39,41 @@ class BaseLLM(ABC):
         self.max_tokens = max_tokens
         self.system_prompt = system_prompt
 
+    def _get_openai_config(self, global_settings):
+        """Helper method to create OpenAI configuration"""
+        config = {
+            'api_key': self.api_key if self.api_key else global_settings.OPENAI_CONFIG.api_key,
+            'model': self.model_id if self.model_id else global_settings.OPENAI_CONFIG.model_id,
+            'temperature': self.temperature if self.temperature else global_settings.OPENAI_CONFIG.temperature,
+            'max_tokens': self.max_tokens if self.max_tokens else global_settings.OPENAI_CONFIG.max_tokens,
+        }
+        
+        # Add optional endpoint configuration if provided
+        endpoint_cfg = global_settings.OPENAI_CONFIG.endpoint_config
+        if endpoint_cfg.api_base:
+            config['api_base'] = endpoint_cfg.api_base
+        if endpoint_cfg.organization_id:
+            config['organization_id'] = endpoint_cfg.organization_id
+        if endpoint_cfg.api_version:
+            config['api_version'] = endpoint_cfg.api_version
+            
+        # Add additional parameters
+        config['top_p'] = global_settings.OPENAI_CONFIG.top_p
+        config['frequency_penalty'] = global_settings.OPENAI_CONFIG.frequency_penalty
+        config['presence_penalty'] = global_settings.OPENAI_CONFIG.presence_penalty
+        
+        return config
+
     def _initialize_model(self) -> None:
         try:
             global_settings = Config()
             
-            # Use model type identifiers from Config
-            if self.model_name.lower() in Config.OPENAI_MODEL_TYPES:
-                config = {
-                    'api_key': self.api_key if self.api_key else global_settings.OPENAI_CONFIG.api_key,
-                    'model': self.model_id if self.model_id else global_settings.OPENAI_CONFIG.model_id,
-                    'temperature': self.temperature if self.temperature else global_settings.OPENAI_CONFIG.temperature,
-                    'max_tokens': self.max_tokens if self.max_tokens else global_settings.OPENAI_CONFIG.max_tokens,
-                }
-                
-                # Add optional endpoint configuration if provided
-                endpoint_cfg = global_settings.OPENAI_CONFIG.endpoint_config
-                if endpoint_cfg.api_base:
-                    config['api_base'] = endpoint_cfg.api_base
-                if endpoint_cfg.organization_id:
-                    config['organization_id'] = endpoint_cfg.organization_id
-                if endpoint_cfg.api_version:
-                    config['api_version'] = endpoint_cfg.api_version
-                    
-                # Add additional parameters
-                config['top_p'] = global_settings.OPENAI_CONFIG.top_p
-                config['frequency_penalty'] = global_settings.OPENAI_CONFIG.frequency_penalty
-                config['presence_penalty'] = global_settings.OPENAI_CONFIG.presence_penalty
-                
+            # Handle OpenAI models - both standard and small models
+            if self.model_name.lower() in Config.OPENAI_MODEL_TYPES or self.model_name in Config.OPENAI_SMALL_MODELS:
+                config = self._get_openai_config(global_settings)
                 self.model = OpenAI(**config)
-            # elif self.model_name == "claude":
-            #     self.model = Anthropic(
-            #         api_key=self.api_key,
-            #         model=self.model_id,
-            #         temperature=self.temperature,
-            #         max_tokens=self.max_tokens
-            #     )
-            elif self.model_name in Config.OPENAI_SMALL_MODELS:
-                config = {
-                    'api_key': self.api_key if self.api_key else global_settings.OPENAI_CONFIG.api_key,
-                    'model': self.model_id if self.model_id else global_settings.OPENAI_CONFIG.model_id,
-                    'temperature': self.temperature if self.temperature else global_settings.OPENAI_CONFIG.temperature,
-                    'max_tokens': self.max_tokens if self.max_tokens else global_settings.OPENAI_CONFIG.max_tokens,
-                }
-                
-                # Add optional endpoint configuration if provided
-                endpoint_cfg = global_settings.OPENAI_CONFIG.endpoint_config
-                if endpoint_cfg.api_base:
-                    config['api_base'] = endpoint_cfg.api_base
-                if endpoint_cfg.organization_id:
-                    config['organization_id'] = endpoint_cfg.organization_id
-                if endpoint_cfg.api_version:
-                    config['api_version'] = endpoint_cfg.api_version
-                    
-                # Add additional parameters
-                config['top_p'] = global_settings.OPENAI_CONFIG.top_p
-                config['frequency_penalty'] = global_settings.OPENAI_CONFIG.frequency_penalty
-                config['presence_penalty'] = global_settings.OPENAI_CONFIG.presence_penalty
-                
-                self.model = OpenAI(**config)
+            
+            # Handle Gemini models
             elif self.model_name.lower() in Config.GEMINI_MODEL_TYPES:
                 self.model = Gemini(
                     api_key=self.api_key if self.api_key else global_settings.GEMINI_CONFIG.api_key,
@@ -112,6 +89,18 @@ class BaseLLM(ABC):
                     },
                     api_base=global_settings.GEMINI_CONFIG.endpoint_config.api_base if global_settings.GEMINI_CONFIG.endpoint_config.api_base else None,
                     api_version=global_settings.GEMINI_CONFIG.endpoint_config.api_version if global_settings.GEMINI_CONFIG.endpoint_config.api_version else None,
+                )
+            
+            # Handle Claude/Anthropic models
+            elif self.model_name.lower() in Config.CLAUDE_MODEL_TYPES:
+                self.model = Anthropic(
+                    api_key=self.api_key if self.api_key else global_settings.CLAUDE_CONFIG.api_key,
+                    model=self.model_id if self.model_id else global_settings.CLAUDE_CONFIG.model_id,
+                    temperature=self.temperature if self.temperature else global_settings.CLAUDE_CONFIG.temperature,
+                    max_tokens=self.max_tokens if self.max_tokens else global_settings.CLAUDE_CONFIG.max_tokens,
+                    top_p=global_settings.CLAUDE_CONFIG.top_p,
+                    api_base=global_settings.CLAUDE_CONFIG.endpoint_config.api_base if global_settings.CLAUDE_CONFIG.endpoint_config.api_base else None,
+                    api_version=global_settings.CLAUDE_CONFIG.endpoint_config.api_version if global_settings.CLAUDE_CONFIG.endpoint_config.api_version else None,
                 )
             else:
                 raise ValueError(f"Unsupported model type: {self.model_name}")

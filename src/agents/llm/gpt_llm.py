@@ -24,12 +24,27 @@ class OpenAILLM(BaseLLM):
 
     def _initialize_model(self) -> None:
         try:
-            self.model = OpenAI(
-                api_key=self.api_key,
-                model=self.model_id,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens
-            )
+            config = Config()
+            openai_config = {
+                'api_key': self.api_key,
+                'model': self.model_id,
+                'temperature': self.temperature,
+                'max_tokens': self.max_tokens,
+                'top_p': config.OPENAI_CONFIG.top_p,
+                'frequency_penalty': config.OPENAI_CONFIG.frequency_penalty,
+                'presence_penalty': config.OPENAI_CONFIG.presence_penalty,
+            }
+            
+            # Add optional endpoint configuration if provided
+            endpoint_cfg = config.OPENAI_CONFIG.endpoint_config
+            if endpoint_cfg.api_base:
+                openai_config['api_base'] = endpoint_cfg.api_base
+            if endpoint_cfg.organization_id:
+                openai_config['organization_id'] = endpoint_cfg.organization_id
+            if endpoint_cfg.api_version:
+                openai_config['api_version'] = endpoint_cfg.api_version
+                
+            self.model = OpenAI(**openai_config)
         except Exception as e:
             logger.error(f"Failed to initialize OpenAI model: {str(e)}")
             raise
@@ -51,7 +66,7 @@ class OpenAILLM(BaseLLM):
         return messages
 
     def _extract_response(self, response) -> str:
-        """Trích xuất text từ response của OpenAI."""
+        """Extract text from OpenAI response."""
         try:
             if hasattr(response, 'text'):
                 return response.text
@@ -126,7 +141,7 @@ class OpenAILLM(BaseLLM):
             raise
     @asynccontextmanager
     async def session(self):
-        """Context manager để quản lý phiên làm việc với model"""
+        """Context manager for managing the session with the model"""
         try:
             yield self
         finally:

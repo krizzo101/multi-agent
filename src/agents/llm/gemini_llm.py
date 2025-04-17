@@ -24,18 +24,21 @@ class GeminiLLM(BaseLLM):
 
     def _initialize_model(self) -> None:
         try:
+            config = Config()
             self.model = Gemini(
                 api_key=self.api_key,
                 model=self.model_id,
                 temperature=self.temperature,
-                # max_output_tokens=self.max_tokens,
+                max_tokens=self.max_tokens,
                 additional_kwargs={
                     'generation_config': {
                         'temperature': self.temperature,
-                        'top_p': 0.8,
-                        'top_k': 40,
+                        'top_p': config.GEMINI_CONFIG.top_p,
+                        'top_k': config.GEMINI_CONFIG.top_k,
                     }
-                }
+                },
+                api_base=config.GEMINI_CONFIG.endpoint_config.api_base if config.GEMINI_CONFIG.endpoint_config.api_base else None,
+                api_version=config.GEMINI_CONFIG.endpoint_config.api_version if config.GEMINI_CONFIG.endpoint_config.api_version else None
             )
         except Exception as e:
             logger.error(f"Failed to initialize Gemini model: {str(e)}")
@@ -58,7 +61,7 @@ class GeminiLLM(BaseLLM):
         return messages
 
     def _extract_response(self, response) -> str:
-        """Trích xuất text từ response của Gemini."""
+        """Extract text from Gemini response."""
         try:
             if hasattr(response, 'text'):
                 return response.text
@@ -133,7 +136,7 @@ class GeminiLLM(BaseLLM):
             raise
     @asynccontextmanager
     async def session(self):
-        """Context manager để quản lý phiên làm việc với model"""
+        """Context manager for managing the session with the model"""
         try:
             yield self
         finally:
