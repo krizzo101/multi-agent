@@ -117,12 +117,12 @@ llm:
   providers:
     openai:
       api_key: ${OPENAI_API_KEY}  # Environment variable reference
-      model_id: gpt-3.5-turbo
-      temperature: 0.7
+      model_id: ${OPENAI_MODEL_ID}
+      temperature: ${OPENAI_TEMP}
       max_tokens: 2048
       endpoint:
         api_base: ${OPENAI_API_BASE}
-        organization_id: ${OPENAI_ORGANIZATION_ID}
+        organization_id: ${OPENAI_ORG_ID}
         api_version: ${OPENAI_API_VERSION}
     
     gemini:

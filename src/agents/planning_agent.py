@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List,Any, Optional
+from typing import List,Any, Optional, Dict
 from colorama import Fore
 from llama_index.core.tools import FunctionTool
 from llama_index.core.llms import ChatMessage
@@ -140,8 +140,11 @@ class PlanningAgent(BaseAgent):
     async def run(
         self,
         query: str,
+        verbose: bool = False,
+        context: Dict[str, Any] = None,
         max_steps: int = 3,
-        verbose: bool = False
+        *args,
+        **kwargs
     ) -> str:
         """Execute the plan and generate response"""
         if verbose:

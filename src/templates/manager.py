@@ -52,7 +52,8 @@ class TemplateManager:
             base_dir = Path(__file__).parent.absolute()
             self.template_dirs = [
                 os.path.join(base_dir, "prompts"),
-                os.path.join(base_dir, "partials")
+                os.path.join(base_dir, "partials"),
+                os.path.join(base_dir, "components")
             ]
         
         # Ensure all template dirs exist
@@ -86,35 +87,95 @@ class TemplateManager:
         
         self.cache.clear()
         
-        # Load prompt templates (*.yaml files in prompts directory)
+        # Track loaded items for logging
+        loaded_templates = 0
+        loaded_partials = 0
+        loaded_scenario_mappers = 0
+        
+        logger.info("Loading templates from all template directories")
+        
+        # Process each template directory
         for template_dir in self.template_dirs:
-            prompt_pattern = os.path.join(template_dir, "*.yaml")
-            partial_pattern = os.path.join(template_dir, "*.yaml")
+            if not os.path.exists(template_dir):
+                logger.warning(f"Template directory does not exist: {template_dir}")
+                continue
+                
+            # Get all YAML files in this directory
+            file_pattern = os.path.join(template_dir, "*.yaml")
+            yaml_files = glob.glob(file_pattern)
             
-            # Load prompt templates
-            for yaml_file in glob.glob(prompt_pattern):
+            # Process each YAML file
+            for yaml_file in yaml_files:
                 try:
-                    with open(yaml_file, 'r') as f:
-                        templates = yaml.safe_load(f) or {}
-                    
-                    # Skip non-dictionary files
-                    if not isinstance(templates, dict):
+                    # Skip scenario mappers for now
+                    if os.path.basename(yaml_file).startswith("scenario_"):
                         continue
                     
-                    # Add templates to cache
-                    for template_id, template_data in templates.items():
-                        if isinstance(template_data, dict) and "content" in template_data:
-                            if template_id in self.cache.templates:
-                                logger.warning(f"Template {template_id} already exists, overwriting")
-                            self.cache.templates[template_id] = template_data
-                        else:
-                            # Handle flat key-value structure (for partials)
-                            self.cache.partials[template_id] = template_data
+                    with open(yaml_file, 'r') as f:
+                        data = yaml.safe_load(f) or {}
+                    
+                    # Skip non-dictionary files
+                    if not isinstance(data, dict):
+                        logger.warning(f"Skipping {yaml_file}: not a dictionary")
+                        continue
+                    
+                    # Process based on directory and file content
+                    if "prompts" in template_dir:
+                        # Process as templates
+                        for template_id, template_data in data.items():
+                            if isinstance(template_data, dict) and "content" in template_data:
+                                if template_id in self.cache.templates:
+                                    logger.warning(f"Template {template_id} already exists, overwriting")
+                                self.cache.templates[template_id] = template_data
+                                loaded_templates += 1
+                            else:
+                                logger.warning(f"Template {template_id} has no content field, skipping")
+                    
+                    elif "partials" in template_dir or "components" in template_dir:
+                        # Process as partials
+                        for partial_id, partial_content in data.items():
+                            if partial_id in self.cache.partials:
+                                logger.warning(f"Partial {partial_id} already exists, overwriting")
+                            self.cache.partials[partial_id] = partial_content
+                            loaded_partials += 1
+                    
+                    else:
+                        # Try to determine type based on content
+                        has_templates = False
+                        has_partials = False
+                        
+                        for item_id, item_data in data.items():
+                            if isinstance(item_data, dict) and "content" in item_data:
+                                has_templates = True
+                            else:
+                                has_partials = True
+                        
+                        if has_templates:
+                            # Process as templates
+                            for template_id, template_data in data.items():
+                                if isinstance(template_data, dict) and "content" in template_data:
+                                    if template_id in self.cache.templates:
+                                        logger.warning(f"Template {template_id} already exists, overwriting")
+                                    self.cache.templates[template_id] = template_data
+                                    loaded_templates += 1
+                        
+                        if has_partials:
+                            # Process as partials
+                            for item_id, item_data in data.items():
+                                if not isinstance(item_data, dict) or "content" not in item_data:
+                                    if item_id in self.cache.partials:
+                                        logger.warning(f"Partial {item_id} already exists, overwriting")
+                                    self.cache.partials[item_id] = item_data
+                                    loaded_partials += 1
+                
                 except Exception as e:
-                    logger.error(f"Error loading templates from {yaml_file}: {str(e)}")
+                    logger.error(f"Error loading template file {yaml_file}: {str(e)}", exc_info=True)
         
         # Load scenario mappers if present (scenario_*.yaml files)
         for template_dir in self.template_dirs:
+            if not os.path.exists(template_dir):
+                continue
+                
             scenario_pattern = os.path.join(template_dir, "scenario_*.yaml")
             
             for yaml_file in glob.glob(scenario_pattern):
@@ -123,15 +184,18 @@ class TemplateManager:
                         scenario_data = yaml.safe_load(f) or {}
                     
                     if not isinstance(scenario_data, dict):
+                        logger.warning(f"Skipping {yaml_file}: not a dictionary")
                         continue
                     
                     # Extract mapper name from filename (scenario_NAME.yaml -> NAME)
                     mapper_name = os.path.basename(yaml_file).replace("scenario_", "").replace(".yaml", "")
                     self.scenario_mappers[mapper_name] = scenario_data
+                    loaded_scenario_mappers += 1
                 except Exception as e:
-                    logger.error(f"Error loading scenario mapper from {yaml_file}: {str(e)}")
+                    logger.error(f"Error loading scenario mapper from {yaml_file}: {str(e)}", exc_info=True)
         
-        logger.info(f"Loaded {len(self.cache.templates)} templates, {len(self.cache.partials)} partials, and {len(self.scenario_mappers)} scenario mappers")
+        # Log summary
+        logger.info(f"Loaded {loaded_templates} templates, {loaded_partials} partials, and {loaded_scenario_mappers} scenario mappers")
         
     def render_template(self, template_id: str, variables: Dict[str, Any] = None) -> str:
         """Render a template with variables.
@@ -155,7 +219,7 @@ class TemplateManager:
         # Find template
         template_data = self.cache.templates.get(template_id)
         if not template_data:
-            logger.error(f"Template not found: {template_id}")
+            logger.error(f"Template not found: {template_id}. Available templates: {list(self.cache.templates.keys())}")
             raise ValueError(f"Template not found: {template_id}")
         
         # Get template content
@@ -164,22 +228,38 @@ class TemplateManager:
             logger.warning(f"Template {template_id} has no content")
             return ""
         
+        # Check if any required variables are missing
+        if "variables" in template_data and isinstance(template_data["variables"], list):
+            required_vars = template_data["variables"]
+            missing_vars = [var for var in required_vars if var not in variables]
+            if missing_vars:
+                logger.warning(f"Missing required variables for template {template_id}: {missing_vars}")
+        
         # Render template with variables
         try:
             # Check if chevron is available, otherwise fallback to string format
             try:
                 import chevron
-                return chevron.render(
+                rendered = chevron.render(
                     template=template_content,
                     data=variables,
                     partials_dict=self.cache.partials
                 ).strip()
-            except (ImportError, AttributeError):
+                return rendered
+            except (ImportError, AttributeError) as e:
+                logger.warning(f"Chevron not available, falling back to string format: {str(e)}")
                 # Fallback to basic string format
-                return template_content.format(**variables).strip()
+                try:
+                    rendered = template_content.format(**variables).strip()
+                    return rendered
+                except KeyError as e:
+                    logger.error(f"Missing variable in template {template_id}: {str(e)}")
+                    # Try to render without the missing variable
+                    return template_content
         except Exception as e:
-            logger.error(f"Error rendering template {template_id}: {str(e)}")
-            return template_content  # Return unrendered as fallback
+            logger.error(f"Error rendering template {template_id}: {str(e)}", exc_info=True)
+            # Return unrendered as fallback
+            return template_content
     
     def render_for_scenario(self, context: Dict[str, Any], variables: Dict[str, Any] = None) -> Optional[str]:
         """Render a template based on scenario matching.
@@ -206,6 +286,8 @@ class TemplateManager:
         
         # Find matching scenario in mappers
         matched_template_id = None
+        matched_scenario_id = None
+        matched_mapper = None
         
         for mapper_name, scenarios in self.scenario_mappers.items():
             for scenario_id, scenario_data in scenarios.items():
@@ -218,6 +300,7 @@ class TemplateManager:
                     continue
                 
                 is_match = True
+                
                 for key, expected in conditions.items():
                     if key not in components:
                         is_match = False
@@ -234,7 +317,8 @@ class TemplateManager:
                 
                 if is_match:
                     matched_template_id = scenario_data.get("template_id")
-                    logger.debug(f"Matched scenario {scenario_id} to template {matched_template_id}")
+                    matched_scenario_id = scenario_id
+                    matched_mapper = mapper_name
                     break
             
             if matched_template_id:
@@ -244,16 +328,18 @@ class TemplateManager:
         if matched_template_id:
             try:
                 return self.render_template(matched_template_id, variables)
-            except ValueError:
-                logger.warning(f"Template {matched_template_id} not found for scenario")
+            except ValueError as e:
+                logger.warning(f"Template {matched_template_id} not found for scenario: {str(e)}")
         
         # Fallback to direct template
         if "agent_type" in context and "conversation_stage" in context:
             direct_template_id = f"{context['agent_type']}.{context['conversation_stage']}"
+            
             try:
                 return self.render_template(direct_template_id, variables)
             except ValueError:
-                logger.debug(f"No direct template found for {direct_template_id}")
+                # Expected case, no need to log
+                pass
         
         # No template found
         return None

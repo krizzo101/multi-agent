@@ -5,6 +5,7 @@ from llama_index.llms.anthropic import Anthropic
 from llama_index.core.llms import ChatMessage
 from .base import BaseLLM
 from src.settings import global_settings
+from src.agents.utils.pattern import safe_extract_content
 import logging
 from llama_index.core import Settings
 
@@ -66,16 +67,7 @@ class ClaudeLLM(BaseLLM):
 
     def _extract_response(self, response) -> str:
         """Extract text from Claude response."""
-        try:
-            if hasattr(response, 'text'):
-                return response.text
-            elif hasattr(response, 'content'):
-                return response.content.parts[0].text
-            else:
-                return response.message.content
-        except Exception as e:
-            logger.error(f"Error extracting response from Claude: {str(e)}")
-            return response.message.content
+        return safe_extract_content(response)
 
     def chat(
         self,

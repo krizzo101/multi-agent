@@ -1,0 +1,43 @@
+# Scenario-based prompt mapping for the Smart Agent Proxy
+# This file defines which prompts should be used in different conversation scenarios
+
+# Mapping rules for Smart Agent Proxy
+conditions:
+  # For initial queries without context
+  - when:
+      conversation_stage: "understanding"
+      agent_type: "proxy"
+      intent: "question"
+    use: "agent.proxy.initial_question"
+    
+  # For follow-up questions
+  - when:
+      conversation_stage: "continuation"
+      agent_type: "proxy"
+      is_followup: true
+    use: "agent.proxy.followup"
+    
+  # For handling clarification requests
+  - when:
+      conversation_stage: "understanding"
+      agent_type: "proxy"
+      requires_clarification: true
+    use: "agent.proxy.clarification"
+    
+  # For complex tasks that might require planning
+  - when:
+      conversation_stage: "understanding"
+      agent_type: "proxy"
+      intent: "complex_task"
+    use: "agent.proxy.complex_task"
+    
+  # For handling error recovery
+  - when:
+      conversation_stage: "error_recovery"
+      agent_type: "proxy"
+    use: "agent.proxy.error_recovery"
+    
+  # Default scenario
+  - when:
+      agent_type: "proxy"
+    use: "agent.proxy.default" 

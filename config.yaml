@@ -8,8 +8,9 @@ llm:
     openai:
       api_key: ${OPENAI_API_KEY}  # Environment variable reference
       model_name: GPT
-      model_id: gpt-3.5-turbo
-      temperature: 0.7
+      model_id: ${OPENAI_MODEL}  # Using the newer GPT-4o mini model
+      system_prompt: "You are an AI assistant powered by OpenAI's GPT-4o mini model. You are direct, helpful, and concise. Identify yourself correctly when asked about your capabilities."
+      temperature: ${OPENAI_TEMP}
       max_tokens: 2048
       top_p: 1.0
       top_k: 40
@@ -18,7 +19,7 @@ llm:
       stop_sequences: []
       endpoint:
         api_base: ${OPENAI_API_BASE}
-        organization_id: ${OPENAI_ORGANIZATION_ID}
+        organization_id: ${OPENAI_ORG_ID}
         api_version: ${OPENAI_API_VERSION}
         deployment_id: ""
         timeout: 60
@@ -58,6 +59,8 @@ agent:
   verbose_logging: false
   max_retries: 3
   timeout_seconds: 60
+  classification_confidence: 0.6  # Minimum confidence for agent selection
+  response_timeout: 25  # Timeout in seconds for agent processing
 
 # API Configuration
 api:
@@ -97,4 +100,16 @@ system:
   cache:
     enable_config_caching: true
     cache_ttl_seconds: 300
-    invalidate_on_env_change: true 
+    invalidate_on_env_change: true
+
+# Web Configuration
+web:
+  api_url: http://localhost:8000
+  request_timeout: 30  # Timeout in seconds for web requests
+
+# Tools Configuration
+tools:
+  weather:
+    enabled: true
+    api_key: ${WEATHER_API_KEY:}
+    default_city: New York 

@@ -1,11 +1,14 @@
 import asyncio
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Generator, List, Optional
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.openai import OpenAI as LlamaIndexOpenAI
 from llama_index.core.llms import ChatMessage
 from .base import BaseLLM
 from src.settings import global_settings
+from src.agents.utils.pattern import safe_extract_content
 import logging
+import os
+from openai import OpenAI, AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -24,26 +27,18 @@ class OpenAILLM(BaseLLM):
 
     def _initialize_model(self) -> None:
         try:
-            openai_config = {
-                'api_key': self.api_key,
-                'model': self.model_id,
-                'temperature': self.temperature,
-                'max_tokens': self.max_tokens,
-                'top_p': global_settings.OPENAI_CONFIG.top_p,
-                'frequency_penalty': global_settings.OPENAI_CONFIG.frequency_penalty,
-                'presence_penalty': global_settings.OPENAI_CONFIG.presence_penalty,
-            }
-            
-            # Add optional endpoint configuration if provided
-            endpoint_cfg = global_settings.OPENAI_CONFIG.endpoint_config
-            if endpoint_cfg.api_base:
-                openai_config['api_base'] = endpoint_cfg.api_base
-            if endpoint_cfg.organization_id:
-                openai_config['organization_id'] = endpoint_cfg.organization_id
-            if endpoint_cfg.api_version:
-                openai_config['api_version'] = endpoint_cfg.api_version
+            # Use the OpenAI client directly
+            self.api_key = self.api_key or os.environ.get("OPENAI_API_KEY", "")
+            if not self.api_key:
+                raise ValueError("OpenAI API key is required")
                 
-            self.model = OpenAI(**openai_config)
+            # Basic configuration for OpenAI client
+            self.client = OpenAI(api_key=self.api_key)
+            self.async_client = AsyncOpenAI(api_key=self.api_key)
+            
+            # Log successful initialization
+            logger.info(f"Initialized OpenAI client with model: {self.model_id}")
+            
         except Exception as e:
             logger.error(f"Failed to initialize OpenAI model: {str(e)}")
             raise
@@ -52,30 +47,28 @@ class OpenAILLM(BaseLLM):
         self,
         query: str,
         chat_history: Optional[List[ChatMessage]] = None
-    ) -> List[ChatMessage]:
+    ) -> List[dict]:
         messages = []
         if self.system_prompt:
-            messages.append(ChatMessage(role="system", content=self.system_prompt))
-            messages.append(ChatMessage(role="assistant", content="I understand and will follow these instructions."))
+            messages.append({"role": "system", "content": self.system_prompt})
+            messages.append({"role": "assistant", "content": "I understand and will follow these instructions."})
         
         if chat_history:
-            messages.extend(chat_history)
+            for msg in chat_history:
+                messages.append({"role": msg.role, "content": msg.content})
         
-        messages.append(ChatMessage(role="user", content=query))
+        messages.append({"role": "user", "content": query})
         return messages
 
     def _extract_response(self, response) -> str:
         """Extract text from OpenAI response."""
         try:
-            if hasattr(response, 'text'):
-                return response.text
-            elif hasattr(response, 'content'):
-                return response.content.parts[0].text
-            else:
-                return response.message.content
+            if hasattr(response, 'choices') and response.choices:
+                return response.choices[0].message.content
+            return safe_extract_content(response)
         except Exception as e:
-            logger.error(f"Error extracting response from OpenAI: {str(e)}")
-            return response.message.content
+            logger.error(f"Error extracting OpenAI response: {str(e)}")
+            return "Error processing response"
 
     def chat(
         self,
@@ -84,7 +77,13 @@ class OpenAILLM(BaseLLM):
     ) -> str:
         try:
             messages = self._prepare_messages(query, chat_history)
-            response = self.model.chat(messages)
+            response = self.client.chat.completions.create(
+                model=self.model_id,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=global_settings.OPENAI_CONFIG.top_p
+            )
             return self._extract_response(response)
         except Exception as e:
             logger.error(f"Error in OpenAI chat: {str(e)}")
@@ -97,7 +96,13 @@ class OpenAILLM(BaseLLM):
     ) -> str:
         try:
             messages = self._prepare_messages(query, chat_history)
-            response = await self.model.achat(messages)
+            response = await self.async_client.chat.completions.create(
+                model=self.model_id,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=global_settings.OPENAI_CONFIG.top_p
+            )
             return self._extract_response(response)
         except Exception as e:
             logger.error(f"Error in OpenAI async chat: {str(e)}")
@@ -110,9 +115,17 @@ class OpenAILLM(BaseLLM):
     ) -> Generator[str, None, None]:
         try:
             messages = self._prepare_messages(query, chat_history)
-            response_stream = self.model.stream_chat(messages)
+            response_stream = self.client.chat.completions.create(
+                model=self.model_id,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=global_settings.OPENAI_CONFIG.top_p,
+                stream=True
+            )
             for response in response_stream:
-                yield self._extract_response(response)
+                if hasattr(response.choices[0], 'delta') and response.choices[0].delta.content:
+                    yield response.choices[0].delta.content
         except Exception as e:
             logger.error(f"Error in OpenAI stream chat: {str(e)}")
             raise
@@ -124,20 +137,21 @@ class OpenAILLM(BaseLLM):
     ) -> AsyncGenerator[str, None]:
         try:
             messages = self._prepare_messages(query, chat_history)
-            response = await self.model.astream_chat(messages)
-            
-            if asyncio.iscoroutine(response):
-                response = await response
-            
-            if hasattr(response, '__aiter__'):
-                async for chunk in response:
-                    yield self._extract_response(chunk)
-            else:
-                yield self._extract_response(response)
-                
+            response_stream = await self.async_client.chat.completions.create(
+                model=self.model_id,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=global_settings.OPENAI_CONFIG.top_p,
+                stream=True
+            )
+            async for response in response_stream:
+                if hasattr(response.choices[0], 'delta') and response.choices[0].delta.content:
+                    yield response.choices[0].delta.content
         except Exception as e:
             logger.error(f"Error in OpenAI async stream chat: {str(e)}")
             raise
+            
     @asynccontextmanager
     async def session(self):
         """Context manager for managing the session with the model"""

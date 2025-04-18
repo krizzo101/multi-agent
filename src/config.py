@@ -62,8 +62,8 @@ class LLMEndpointConfig(BaseModel):
 # LLM Configuration
 class LLMConfig(BaseModel):
     api_key: str = ""
-    model_name: str = "GPT"
-    model_id: str = "gpt-4-turbo"
+    model_name: str = "o3-mini"
+    model_id: str = "o3-mini"
     temperature: float = 0.7
     max_tokens: int = 2048
     system_prompt: str = "You are a helpful assistant."
@@ -197,7 +197,7 @@ class Config:
         claude_defaults = {
             "api_key": os.environ.get("ANTHROPIC_API_KEY", ""),
             "model_name": "Claude",
-            "model_id": "claude-3-haiku-20240307",
+            "model_id": "claude-3.7-sonnet-thinking",
             "temperature": 0.7,
             "max_tokens": 4000,
             "system_prompt": LLM_SYSTEM_PROMPT,
@@ -250,14 +250,14 @@ class LegacyAdapter:
         self.OPENAI_API_KEY = self._config.llm.api_key
         self.OPENAI_MODEL_NAME = self._config.llm.model_name
         self.OPENAI_MODEL_ID = self._config.llm.model_id
-        self.OPENAI_TEMPERATURE = self._config.llm.temperature
+        self.OPENAI_TEMP = self._config.llm.temperature
         self.OPENAI_MAX_TOKENS = self._config.llm.max_tokens
         self.OPENAI_TOP_P = self._config.llm.top_p
         self.OPENAI_TOP_K = self._config.llm.top_k
         self.OPENAI_FREQUENCY_PENALTY = self._config.llm.frequency_penalty
         self.OPENAI_PRESENCE_PENALTY = self._config.llm.presence_penalty
         self.OPENAI_API_BASE = self._config.llm.endpoint_config.api_base
-        self.OPENAI_ORGANIZATION_ID = self._config.llm.endpoint_config.organization_id
+        self.OPENAI_ORG_ID = self._config.llm.endpoint_config.organization_id
         self.OPENAI_API_VERSION = self._config.llm.endpoint_config.api_version
         
         # Gemini configurations
@@ -305,10 +305,10 @@ class LegacyAdapter:
         self.LOG_DIR = self._config.logging.file_path
 
 # Model type identifiers
-OPENAI_MODEL_TYPES = ["openai", "gpt", "azure"]  # Identifiers used to recognize OpenAI models
+OPENAI_MODEL_TYPES = ["openai", "gpt", "azure", "o3"]  # Identifiers used to recognize OpenAI models
 GEMINI_MODEL_TYPES = ["gemini", "google"]        # Identifiers used to recognize Gemini models
 CLAUDE_MODEL_TYPES = ["claude", "anthropic"]     # Identifiers used to recognize Claude models
-OPENAI_SMALL_MODELS = ["gpt-4.1-nano-2025-04-14", "gpt-4.1-nano", "gpt-4.1-mini-2025-04-14", "gpt-4.1-mini", "o3-mini-2025-01-31", "o3-mini"]
+OPENAI_SMALL_MODELS = ["gpt-4.1-nano", "gpt-4.1-mini", "o3-mini", "gpt-4o-mini"]
 
 # Create default configuration instances
 config = Config()

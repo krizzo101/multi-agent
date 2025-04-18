@@ -251,43 +251,62 @@ def _create_initial_templates():
 def get_prompt(prompt_id: str, variables: Dict[str, Any] = None) -> str:
     """Get a prompt from the template system.
     
-    This is the preferred method for accessing prompts. It first checks
-    for a matching template, and if not found, falls back to legacy prompt constants.
-    
     Args:
-        prompt_id: Template ID or legacy prompt name (e.g., 'agent.classify' or 'CLASSIFY_PROMPT')
+        prompt_id: ID of the prompt template to use
         variables: Variables to substitute in the template
     
     Returns:
-        Rendered prompt template
+        Rendered prompt
     """
     variables = variables or {}
     
-    # Ensure initial templates are created
-    _create_initial_templates()
-    
-    template_manager = get_template_manager()
-    
-    # Check if prompt_id is a legacy constant name
-    template_id = _LEGACY_TO_TEMPLATE_MAP.get(prompt_id, prompt_id)
-    
     try:
-        # Try to get from template system
-        return template_manager.render_template(template_id, variables)
-    except ValueError:
-        # If not found in template system, check legacy constants
-        if prompt_id in globals():
-            prompt_template = globals()[prompt_id]
-            try:
-                # Try to format with the provided variables
-                return prompt_template.format(**variables)
-            except (KeyError, ValueError) as e:
-                logger.warning(f"Error formatting legacy prompt {prompt_id}: {str(e)}")
-                return prompt_template
-        else:
-            # If all else fails, log an error and return an empty string
-            logger.error(f"Prompt not found: {prompt_id}")
-            return ""
+        # Ensure initial templates are created if needed
+        _create_initial_templates()
+        
+        # Get template manager
+        template_manager = get_template_manager()
+        
+        # Try to get template from template system
+        try:
+            rendered = template_manager.render_template(prompt_id, variables)
+            return rendered
+        except ValueError:
+            # Check if it's a legacy prompt ID that can be mapped
+            if prompt_id in _LEGACY_TO_TEMPLATE_MAP:
+                template_id = _LEGACY_TO_TEMPLATE_MAP[prompt_id]
+                try:
+                    rendered = template_manager.render_template(template_id, variables)
+                    return rendered
+                except ValueError:
+                    # Fall through to next fallback
+                    pass
+            
+            # Fall back to legacy direct access
+            legacy_value = globals().get(prompt_id)
+            if legacy_value and isinstance(legacy_value, str):
+                try:
+                    # Simple string substitution for legacy prompts
+                    return legacy_value.format(**variables)
+                except KeyError as e:
+                    logger.error(f"Error formatting legacy prompt {prompt_id}: {str(e)}")
+                    return legacy_value
+            
+            # Last resort: use default from PromptDefaults
+            default_value = getattr(PromptDefaults, prompt_id, None)
+            if default_value and isinstance(default_value, str):
+                try:
+                    return default_value.format(**variables)
+                except KeyError as e:
+                    logger.error(f"Error formatting default prompt {prompt_id}: {str(e)}")
+                    return default_value
+                
+            # Nothing found
+            logger.error(f"No prompt found for ID: {prompt_id}")
+            return f"ERROR: Prompt '{prompt_id}' not found"
+    except Exception as e:
+        logger.error(f"Unexpected error in get_prompt for {prompt_id}: {str(e)}", exc_info=True)
+        return f"ERROR: Failed to get prompt '{prompt_id}' due to: {str(e)}"
 
 
 def get_prompt_for_scenario(context: Dict[str, Any], variables: Dict[str, Any] = None) -> Optional[str]:

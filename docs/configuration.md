@@ -152,14 +152,14 @@ This example demonstrates the fallback hierarchy:
 
 ```python
 # Class-level default defined in Config class
-OPENAI_MODEL_ID = "gpt-3.5-turbo"
+OPENAI_MODEL_ID = "o3-mini"
 
 # Configuration loading with fallbacks
 OPENAI_CONFIG = LLMConfig(
     # First tries environment variable, then falls back to class default
     model_id=os.environ.get('OPENAI_MODEL_ID', OPENAI_MODEL_ID),
     # If both are missing, falls back to Pydantic model default
-    temperature=float(os.environ.get('OPENAI_TEMPERATURE', OPENAI_TEMPERATURE)),
+    temperature=float(os.environ.get('OPENAI_TEMP', OPENAI_TEMP)),
     # ... other settings
 )
 ```
@@ -195,8 +195,12 @@ For basic usage, simply modify the required API keys in your `.env` file:
 
 ```plaintext
 OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL_ID=o3-mini
+OPENAI_ORG_ID=org-yourOrgId
 GOOGLE_API_KEY=your_google_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
+GEMINI_MODEL_ID=models/gemini-pro
+CLAUDE_MODEL_ID=claude-3-opus-20240229
 ```
 
 ### 2. Model Selection
@@ -210,7 +214,7 @@ DEFAULT_LLM=gemini  # Switch to using Gemini by default
 And configure specific models for each provider:
 
 ```plaintext
-OPENAI_MODEL_ID=gpt-4
+OPENAI_MODEL_ID=o3-mini
 GEMINI_MODEL_ID=models/gemini-pro
 CLAUDE_MODEL_ID=claude-3-opus-20240229
 ```
@@ -220,7 +224,7 @@ CLAUDE_MODEL_ID=claude-3-opus-20240229
 Tune generation parameters for each model:
 
 ```plaintext
-OPENAI_TEMPERATURE=0.8
+OPENAI_TEMP=0.8
 OPENAI_MAX_TOKENS=4096
 OPENAI_TOP_P=0.95
 OPENAI_FREQUENCY_PENALTY=0.2
@@ -233,7 +237,7 @@ For enterprise deployments or Azure OpenAI:
 ```plaintext
 OPENAI_API_BASE=https://your-endpoint.openai.azure.com/
 OPENAI_API_VERSION=2023-05-15
-OPENAI_ORGANIZATION_ID=org-yourOrgId
+OPENAI_ORG_ID=org-yourOrgId
 ```
 
 ### 5. Agent Behavior
@@ -311,7 +315,7 @@ API_HOST=0.0.0.0  # Accept connections from any IP
 For testing:
 
 ```plaintext
-OPENAI_MODEL_ID=gpt-3.5-turbo  # Use cheaper model for testing
+OPENAI_MODEL_ID=o3-mini  # Using approved model for all testing
 LOG_TO_FILE=False  # Avoid cluttering logs during tests
 MAX_TOKENS=1024  # Smaller responses for faster tests
 ```

@@ -128,8 +128,19 @@ class BaseLLM(ABC):
             str: The extracted content
         """
         try:
+            # Handle citation metadata in Gemini or other LLMs
+            if hasattr(response, 'finish_reason') and response.finish_reason == 'RECITATION':
+                logger.warning(f"Detected RECITATION in response from {self.model_name}")
+                return "I found information about this topic, but can't display it with proper citations. Please try a different question."
+            
+            # Handle other response formats
             if hasattr(response, 'content'):
-                return response.content
+                if isinstance(response.content, str):
+                    return response.content
+                elif hasattr(response.content, 'parts') and response.content.parts:
+                    return response.content.parts[0].text
+                else:
+                    return str(response.content)
             elif hasattr(response, 'message') and hasattr(response.message, 'content'):
                 return response.message.content
             elif isinstance(response, dict) and 'content' in response:
@@ -140,8 +151,8 @@ class BaseLLM(ABC):
                 # Try best effort to get string representation
                 return str(response)
         except Exception as e:
-            logger.error(f"Error extracting response from {self.model_name}: {str(e)}")
-            return response.message.content
+            logger.error(f"Error extracting response from {self.model_name}: {str(e)}", exc_info=True)
+            return "I encountered an issue processing this response. Please try a different question."
         
     @abstractmethod
     def chat(

@@ -1,0 +1,289 @@
+# Tools Configuration for Agent Templates
+#
+# This file defines tools that can be used by different agent templates,
+# specifying compatibility, parameters, and configuration options.
+
+code_analysis:
+  description: "Analyzes code to identify patterns, issues, and optimization opportunities"
+  parameters:
+    - language
+    - code_snippet
+    - analysis_type
+  compatible_with:
+    - developer
+    - data_scientist
+    - system_architect
+  temperature_adjustment: -0.1
+  system_prompt_addition: |
+    You have access to a code analysis tool that can help identify issues, patterns, and optimization opportunities.
+    When analyzing code, focus on readability, maintainability, and performance aspects.
+
+unit_test_generation:
+  description: "Generates unit tests for given code"
+  parameters:
+    - language
+    - code_snippet
+    - testing_framework
+  compatible_with:
+    - developer
+  temperature_adjustment: -0.2
+  system_prompt_addition: |
+    You have access to a unit test generation tool. When generating tests:
+    - Aim for comprehensive test coverage of edge cases and happy paths
+    - Write clear test descriptions that specify expected behavior
+    - Follow testing best practices for the specific language/framework
+
+code_completion:
+  description: "Completes partial code snippets based on context and intent"
+  parameters:
+    - language
+    - partial_code
+    - completion_type
+  compatible_with:
+    - developer
+    - data_scientist
+  temperature_adjustment: 0.0
+  system_prompt_addition: |
+    You have access to a code completion tool that can help finish partial code.
+    Consider the existing code style and patterns when providing completions.
+
+debugging:
+  description: "Helps identify and fix issues in code"
+  parameters:
+    - language
+    - code_snippet
+    - error_message
+    - observed_behavior
+  compatible_with:
+    - developer
+    - system_architect
+  temperature_adjustment: -0.1
+  system_prompt_addition: |
+    You have access to a debugging tool. When debugging code:
+    - Systematically analyze the code to identify the root cause
+    - Consider multiple possible explanations for the observed behavior
+    - Suggest specific fixes with explanations of why they will work
+
+refactoring:
+  description: "Improves code structure without changing functionality"
+  parameters:
+    - language
+    - code_snippet
+    - refactoring_goals
+  compatible_with:
+    - developer
+    - system_architect
+  temperature_adjustment: -0.1
+  system_prompt_addition: |
+    You have access to a code refactoring tool. When refactoring:
+    - Preserve the original functionality while improving structure
+    - Apply established refactoring patterns appropriate to the language
+    - Consider the impact on readability, maintainability, and performance
+
+data_analysis:
+  description: "Analyzes data to identify patterns, trends, and insights"
+  parameters:
+    - data_format
+    - analysis_type
+    - visualization_type
+  compatible_with:
+    - data_scientist
+    - researcher
+  temperature_adjustment: -0.1
+  system_prompt_addition: |
+    You have access to a data analysis tool. When analyzing data:
+    - Use appropriate statistical methods based on the data type and distribution
+    - Consider potential biases and limitations in the analysis
+    - Clearly explain your methodology and the significance of findings
+
+visualization:
+  description: "Creates data visualizations to represent insights effectively"
+  parameters:
+    - data_format
+    - visualization_type
+    - customization_options
+  compatible_with:
+    - data_scientist
+    - researcher
+  temperature_adjustment: 0.0
+  system_prompt_addition: |
+    You have access to a data visualization tool. When creating visualizations:
+    - Choose chart types appropriate for the data and insight being conveyed
+    - Follow visualization best practices for clarity and accuracy
+    - Consider accessibility and ease of interpretation
+
+model_evaluation:
+  description: "Evaluates machine learning models for performance and bias"
+  parameters:
+    - model_type
+    - evaluation_metrics
+    - dataset_description
+  compatible_with:
+    - data_scientist
+  temperature_adjustment: -0.2
+  system_prompt_addition: |
+    You have access to a model evaluation tool. When evaluating models:
+    - Use appropriate metrics based on the problem type and business objectives
+    - Check for potential biases and fairness concerns
+    - Consider model robustness and generalization ability
+
+literature_search:
+  description: "Searches academic literature for relevant information"
+  parameters:
+    - topic
+    - keywords
+    - max_results
+  compatible_with:
+    - researcher
+    - data_scientist
+  temperature_adjustment: -0.1
+  system_prompt_addition: |
+    You have access to a literature search tool. When searching literature:
+    - Use precise keywords to get the most relevant results
+    - Consider the credibility and impact of sources
+    - Look for both seminal works and recent developments
+
+citation_analysis:
+  description: "Analyzes citation patterns and relationships in academic literature"
+  parameters:
+    - paper_details
+    - analysis_type
+  compatible_with:
+    - researcher
+  temperature_adjustment: -0.1
+  system_prompt_addition: |
+    You have access to a citation analysis tool. When analyzing citations:
+    - Look for influence patterns and intellectual lineages
+    - Identify seminal works and their impact
+    - Consider citation patterns as indicators of scholarly consensus
+
+knowledge_synthesis:
+  description: "Synthesizes information from multiple sources into coherent knowledge"
+  parameters:
+    - topics
+    - source_types
+    - synthesis_format
+  compatible_with:
+    - researcher
+    - technical_writer
+  temperature_adjustment: 0.0
+  system_prompt_addition: |
+    You have access to a knowledge synthesis tool. When synthesizing information:
+    - Integrate insights from multiple sources while maintaining accuracy
+    - Identify common themes, contradictions, and gaps
+    - Create a coherent narrative that preserves important nuance
+
+decision_analysis:
+  description: "Analyzes decision options and their implications"
+  parameters:
+    - options
+    - criteria
+    - constraints
+  compatible_with:
+    - strategic_advisor
+    - system_architect
+  temperature_adjustment: 0.0
+  system_prompt_addition: |
+    You have access to a decision analysis tool. When analyzing decisions:
+    - Consider multiple objectives and their relative importance
+    - Evaluate tradeoffs between different options
+    - Account for uncertainty and risk in the analysis
+
+risk_assessment:
+  description: "Evaluates risks and their potential impact"
+  parameters:
+    - risk_area
+    - assessment_criteria
+    - mitigation_focus
+  compatible_with:
+    - strategic_advisor
+    - system_architect
+  temperature_adjustment: -0.1
+  system_prompt_addition: |
+    You have access to a risk assessment tool. When assessing risks:
+    - Consider both likelihood and potential impact
+    - Identify dependencies and cascading effects
+    - Suggest practical mitigation strategies
+
+scenario_planning:
+  description: "Develops and analyzes potential future scenarios"
+  parameters:
+    - focal_question
+    - time_horizon
+    - uncertainty_factors
+  compatible_with:
+    - strategic_advisor
+  temperature_adjustment: 0.2
+  system_prompt_addition: |
+    You have access to a scenario planning tool. When creating scenarios:
+    - Develop plausible, divergent futures based on key uncertainties
+    - Consider the implications for strategy and decision-making
+    - Balance creativity with plausibility and relevance
+
+content_generation:
+  description: "Generates creative content based on specifications"
+  parameters:
+    - content_type
+    - style
+    - length
+    - tone
+  compatible_with:
+    - creative
+    - technical_writer
+  temperature_adjustment: 0.2
+  system_prompt_addition: |
+    You have access to a content generation tool. When creating content:
+    - Adapt your style and tone to match the specified requirements
+    - Ensure content is original, engaging, and cohesive
+    - Consider the audience and purpose throughout the creation process
+
+creative_writing:
+  description: "Creates fiction, poetry, or other creative written content"
+  parameters:
+    - content_type
+    - genre
+    - style_preferences
+    - length
+  compatible_with:
+    - creative
+  temperature_adjustment: 0.3
+  system_prompt_addition: |
+    You have access to a creative writing tool. When writing creatively:
+    - Develop engaging characters, settings, or themes
+    - Use vivid, descriptive language appropriate to the genre
+    - Create a coherent narrative structure or poetic form
+
+documentation_generation:
+  description: "Creates technical documentation for software, products, or processes"
+  parameters:
+    - doc_type
+    - target_audience
+    - format
+    - technical_level
+  compatible_with:
+    - technical_writer
+    - developer
+    - system_architect
+  temperature_adjustment: -0.1
+  system_prompt_addition: |
+    You have access to a documentation generation tool. When creating documentation:
+    - Structure information logically with appropriate headings and sections
+    - Use consistent terminology and clear explanations
+    - Include examples, diagrams, or code samples when helpful
+    - Consider the needs and technical level of the target audience
+
+architecture_review:
+  description: "Reviews system architecture for quality attributes and improvement opportunities"
+  parameters:
+    - system_description
+    - quality_attributes
+    - review_focus
+  compatible_with:
+    - system_architect
+    - developer
+  temperature_adjustment: -0.1
+  system_prompt_addition: |
+    You have access to an architecture review tool. When reviewing architecture:
+    - Evaluate against key quality attributes (scalability, security, maintainability, etc.)
+    - Identify architectural risks, technical debt, and design issues
+    - Suggest improvements with rationale and implementation considerations 
